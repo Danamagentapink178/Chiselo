@@ -249,6 +249,15 @@ final class EditorModel: ObservableObject {
     user-select: text !important;
   }
 
+  .chiselo-lite-editing [data-chiselo-lite-editable][data-chiselo-lite-font-lock="true"] {
+    font-family: var(--chiselo-lite-edit-font-family) !important;
+    font-size: var(--chiselo-lite-edit-font-size) !important;
+    font-weight: var(--chiselo-lite-edit-font-weight) !important;
+    line-height: var(--chiselo-lite-edit-line-height) !important;
+    letter-spacing: var(--chiselo-lite-edit-letter-spacing) !important;
+    color: var(--chiselo-lite-edit-color) !important;
+  }
+
   .chiselo-lite-editing [data-chiselo-lite-editable]:focus {
     outline: 2px solid var(--chiselo-lite-accent) !important;
     box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15) !important;
@@ -282,6 +291,14 @@ final class EditorModel: ObservableObject {
   const RUNTIME_SELECTOR = "[data-chiselo-lite-runtime]";
   const EDITABLE_SELECTOR = "h1,h2,h3,h4,h5,h6,p,li,figcaption,caption,td,th,button,a,label,blockquote,pre,span,strong,em,b,i,u,small,code,mark,time,sub,sup";
   const STORAGE_KEY = `chiselo-lite:${location.pathname || "document"}:${document.title || "untitled"}`;
+  const FONT_LOCK_PROPS = [
+    "--chiselo-lite-edit-font-family",
+    "--chiselo-lite-edit-font-size",
+    "--chiselo-lite-edit-font-weight",
+    "--chiselo-lite-edit-line-height",
+    "--chiselo-lite-edit-letter-spacing",
+    "--chiselo-lite-edit-color"
+  ];
 
   let isEditing = false;
   let statusNode = null;
@@ -308,6 +325,11 @@ final class EditorModel: ObservableObject {
         node.removeAttribute(attribute.name);
       }
     }
+
+    for (const property of FONT_LOCK_PROPS) {
+      node.style?.removeProperty(property);
+    }
+    if (node.getAttribute?.("style") === "") node.removeAttribute("style");
   }
 
   function cleanClone(root) {
@@ -353,11 +375,50 @@ final class EditorModel: ObservableObject {
     if (statusNode) statusNode.textContent = text;
   }
 
+  function lockTypography(node) {
+    const computed = getComputedStyle(node);
+    node.style.setProperty("--chiselo-lite-edit-font-family", computed.fontFamily || "inherit");
+    node.style.setProperty("--chiselo-lite-edit-font-size", computed.fontSize || "inherit");
+    node.style.setProperty("--chiselo-lite-edit-font-weight", computed.fontWeight || "inherit");
+    node.style.setProperty("--chiselo-lite-edit-line-height", computed.lineHeight || "normal");
+    node.style.setProperty("--chiselo-lite-edit-letter-spacing", computed.letterSpacing || "normal");
+    node.style.setProperty("--chiselo-lite-edit-color", computed.color || "inherit");
+    node.setAttribute("data-chiselo-lite-font-lock", "true");
+  }
+
+  function unlockTypography(node) {
+    node.removeAttribute("data-chiselo-lite-font-lock");
+    for (const property of FONT_LOCK_PROPS) {
+      node.style.removeProperty(property);
+    }
+    if (node.getAttribute("style") === "") node.removeAttribute("style");
+  }
+
+  function insertPlainTextAtSelection(text) {
+    if (!text) return;
+    if (document.queryCommandSupported?.("insertText")) {
+      document.execCommand("insertText", false, text);
+      return;
+    }
+
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
   function setEditing(enabled) {
     isEditing = enabled;
     document.documentElement.classList.toggle("chiselo-lite-editing", enabled);
 
     for (const node of document.querySelectorAll("[data-chiselo-lite-editable]")) {
+      unlockTypography(node);
       node.removeAttribute("data-chiselo-lite-editable");
       node.removeAttribute("contenteditable");
       node.removeAttribute("spellcheck");
@@ -366,6 +427,7 @@ final class EditorModel: ObservableObject {
     if (enabled) {
       const nodes = editableNodes();
       for (const node of nodes) {
+        lockTypography(node);
         node.setAttribute("data-chiselo-lite-editable", "true");
         node.setAttribute("contenteditable", "true");
         node.setAttribute("spellcheck", "true");
@@ -477,6 +539,15 @@ final class EditorModel: ObservableObject {
 
   document.addEventListener("input", (event) => {
     if (!event.target.closest?.("[data-chiselo-lite-editable]")) return;
+    updateStatus("有未导出的修改");
+  }, true);
+
+  document.addEventListener("paste", (event) => {
+    if (!event.target.closest?.("[data-chiselo-lite-editable]")) return;
+    const text = event.clipboardData?.getData("text/plain") || "";
+    if (!text) return;
+    event.preventDefault();
+    insertPlainTextAtSelection(text);
     updateStatus("有未导出的修改");
   }, true);
 

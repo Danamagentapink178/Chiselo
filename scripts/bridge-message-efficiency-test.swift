@@ -155,7 +155,6 @@ final class BridgeMessageEfficiencyTest: NSObject, WKNavigationDelegate, WKScrip
 
 let projectRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let editorURL = projectRoot
-    .appendingPathComponent("Sources")
     .appendingPathComponent("Chiselo")
     .appendingPathComponent("Resources")
     .appendingPathComponent("Editor")

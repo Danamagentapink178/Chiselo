@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tokensPath = join(root, "design-tokens.json");
-const swiftPath = join(root, "Sources", "Chiselo", "MaterialTheme.swift");
-const cssPath = join(root, "Sources", "Chiselo", "Resources", "Editor", "design-tokens.css");
+const swiftPath = join(root, "Chiselo", "MaterialTheme.swift");
+const cssPath = join(root, "Chiselo", "Resources", "Editor", "design-tokens.css");
 
 const tokens = JSON.parse(readFileSync(tokensPath, "utf8"));
 

@@ -13,7 +13,7 @@ jobs:
         run: swift build
       - name: JavaScript syntax checks
         run: |
-          node --check Sources/Chiselo/Resources/Editor/editor.js
+          node --check Chiselo/Resources/Editor/editor.js
           node --check scripts/generate-digital-transformation-slides.mjs
       - name: Validate sample deck
-        run: node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide
+        run: node scripts/validate-deck.mjs examples/sample.aislide

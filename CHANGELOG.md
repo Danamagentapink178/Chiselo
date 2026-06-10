@@ -22,3 +22,6 @@ Initial public preview preparation.
 - Configured the update push script to use `~/.gh` for GitHub CLI state.
 - Added stronger GitHub search keywords for HTML editing and html2ppt/html2pptx queries.
 - Cleaned the public repository structure by moving screenshots to `assets/`, moving schema validation to `scripts/`, and removing AI prompt skill folders from the root.
+- Reorganized the app source into a top-level `Chiselo/` folder for a cleaner public GitHub layout.
+- Fixed CI paths after repository cleanup.
+- Locked typography during HTML text editing and forced plain-text paste to avoid accidental font mismatches.

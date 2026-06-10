@@ -22,7 +22,7 @@ else
   echo "==> Running quick checks"
   swift build
   node --check scripts/generate-design-tokens.mjs
-  node --check Sources/Chiselo/Resources/Editor/editor.js
+  node --check Chiselo/Resources/Editor/editor.js
 fi
 
 echo "==> Git status before staging"

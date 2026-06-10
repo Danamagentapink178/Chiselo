@@ -73,7 +73,7 @@ If the script is not used:
 node scripts/generate-design-tokens.mjs
 swift build
 node --check scripts/generate-design-tokens.mjs
-node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check Chiselo/Resources/Editor/editor.js
 git status --short
 git add .
 git commit -m "Describe this update"

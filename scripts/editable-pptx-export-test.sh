@@ -14,7 +14,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-swiftc "$ROOT_DIR/Sources/Chiselo/HTMLRenderExporter.swift" "$ROOT_DIR/scripts/export-html-high-fidelity.swift" -o "$EXPORT_BIN"
+swiftc "$ROOT_DIR/Chiselo/HTMLRenderExporter.swift" "$ROOT_DIR/scripts/export-html-high-fidelity.swift" -o "$EXPORT_BIN"
 "$EXPORT_BIN" "$INPUT" "$OUTPUT" editable-pptx
 
 unzip -t "$OUTPUT" >/dev/null

@@ -4,7 +4,7 @@
 
 ```bash
 swift build
-node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check Chiselo/Resources/Editor/editor.js
 node --check scripts/generate-digital-transformation-slides.mjs
 node scripts/validate-deck.mjs examples/sample.aislide
 ```
@@ -38,7 +38,7 @@ swift scripts/html-slide-visual-qa.swift
 ## Export Checks
 
 ```bash
-swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o /tmp/chiselo-export-test
+swiftc Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o /tmp/chiselo-export-test
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides.pdf pdf
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-editable.pptx editable-pptx
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-image.pptx image-pptx

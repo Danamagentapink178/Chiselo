@@ -22,7 +22,7 @@ swift run Chiselo
 Useful checks:
 
 ```bash
-node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check Chiselo/Resources/Editor/editor.js
 swift scripts/import-smoke-test.swift
 swift scripts/import-adapter-test.swift
 swift scripts/precision-adjustment-test.swift

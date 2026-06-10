@@ -22,7 +22,7 @@ swift build
 
 echo "==> JavaScript syntax"
 node --check scripts/generate-design-tokens.mjs
-node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check Chiselo/Resources/Editor/editor.js
 node --check scripts/generate-digital-transformation-slides.mjs
 
 echo "==> Sample deck schema"
@@ -49,7 +49,7 @@ swift scripts/html-slide-visual-qa.swift outputs/chiselo-five-slide-demo-edited.
 
 echo "==> Export validation"
 EXPORT_TEST_BIN="/tmp/chiselo-export-preflight"
-swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o "$EXPORT_TEST_BIN"
+swiftc Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o "$EXPORT_TEST_BIN"
 "$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides.pdf pdf
 "$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-editable.pptx editable-pptx
 if "$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/should-not-exist.pptx typo-pptx 2>/dev/null; then
@@ -57,7 +57,7 @@ if "$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outpu
   exit 1
 fi
 ORIENTATION_TEST_BIN="/tmp/chiselo-export-orientation-test"
-swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-orientation-test.swift -o "$ORIENTATION_TEST_BIN"
+swiftc Chiselo/HTMLRenderExporter.swift scripts/export-orientation-test.swift -o "$ORIENTATION_TEST_BIN"
 "$ORIENTATION_TEST_BIN"
 scripts/pptx-design-absorption-test.sh
 scripts/editable-pptx-export-test.sh

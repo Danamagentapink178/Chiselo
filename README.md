@@ -115,7 +115,7 @@ After changing tokens, regenerate the derived files:
 node scripts/generate-design-tokens.mjs
 ```
 
-This updates `Sources/Chiselo/MaterialTheme.swift` and `Sources/Chiselo/Resources/Editor/design-tokens.css`. The release/package scripts run this step automatically.
+This updates `Chiselo/MaterialTheme.swift` and `Chiselo/Resources/Editor/design-tokens.css`. The release/package scripts run this step automatically.
 
 ## Basic Workflow
 
@@ -133,7 +133,7 @@ More detail: [Usage Guide](docs/USAGE.md).
 
 ```bash
 swift build
-node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check Chiselo/Resources/Editor/editor.js
 swift scripts/import-smoke-test.swift
 swift scripts/bridge-message-efficiency-test.swift
 swift scripts/html-delivery-diagnostics-test.swift
@@ -165,7 +165,7 @@ More detail: [Testing Guide](docs/TESTING.md).
 ## Export Validation
 
 ```bash
-swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o /tmp/chiselo-export-test
+swiftc Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o /tmp/chiselo-export-test
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides.pdf pdf
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-editable.pptx editable-pptx
 /tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-image.pptx image-pptx
@@ -178,8 +178,8 @@ PPTX is one delivery target for users who need object-level editability outside 
 ## Repository Map
 
 ```text
-Sources/Chiselo/                  macOS SwiftUI app and exporter
-Sources/Chiselo/Resources/Editor/ WKWebView HTML editor
+Chiselo/                  macOS SwiftUI app and exporter
+Chiselo/Resources/Editor/ WKWebView HTML editor
 assets/                           public screenshots and repository media
 scripts/                          QA, export, icon, demo, and packaging scripts
 examples/                         sample .aislide and HTML fixtures

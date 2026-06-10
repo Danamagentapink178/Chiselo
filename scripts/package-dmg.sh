@@ -14,7 +14,7 @@ DMG_STAGING="$ROOT_DIR/.build/dmg-staging"
 OUTPUT_APP_BUNDLE="$OUTPUT_DIR/$APP_NAME.app"
 DEFAULT_OUTPUT_APP_BUNDLE="$DEFAULT_OUTPUT_DIR/$APP_NAME.app"
 DMG_PATH="$OUTPUT_DIR/Chiselo-${VERSION}.dmg"
-ICON_DIR="$ROOT_DIR/Sources/Chiselo/Resources/AppIcon"
+ICON_DIR="$ROOT_DIR/Chiselo/Resources/AppIcon"
 ICON_FILE="$ICON_DIR/Chiselo.icns"
 
 cd "$ROOT_DIR"

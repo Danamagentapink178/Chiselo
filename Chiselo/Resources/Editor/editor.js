@@ -1626,6 +1626,14 @@
         -webkit-user-select: text !important;
         user-select: text !important;
       }
+      [contenteditable="true"][data-chiselo-edit-font-lock="true"] {
+        font-family: var(--chiselo-edit-font-family) !important;
+        font-size: var(--chiselo-edit-font-size) !important;
+        font-weight: var(--chiselo-edit-font-weight) !important;
+        line-height: var(--chiselo-edit-line-height) !important;
+        letter-spacing: var(--chiselo-edit-letter-spacing) !important;
+        color: var(--chiselo-edit-color) !important;
+      }
       strong[contenteditable="true"],
       em[contenteditable="true"],
       b[contenteditable="true"],
@@ -1648,6 +1656,8 @@
     }
     setupDirectResourceTracking(doc);
     normalizeDirectTablesForEditing(doc);
+
+    doc.addEventListener("paste", handleDirectPlainTextPaste, true);
 
     doc.addEventListener("click", (event) => {
       const link = event.target.closest?.("a");
@@ -2386,6 +2396,69 @@
     return normalizedText(node).length > 0 || node.matches?.("p,h1,h2,h3,h4,h5,h6,li,span,div,td,th,button,a");
   }
 
+  function insertPlainTextAtSelection(doc, text) {
+    if (!text) return;
+    if (doc.queryCommandSupported?.("insertText")) {
+      doc.execCommand("insertText", false, text);
+      return;
+    }
+
+    const selection = doc.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const textNode = doc.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function handleDirectPlainTextPaste(event) {
+    const editable = event.target.closest?.("[contenteditable='true']");
+    if (!editable) return;
+    const text = event.clipboardData?.getData("text/plain") || "";
+    if (!text) return;
+    event.preventDefault();
+    insertPlainTextAtSelection(editable.ownerDocument, text);
+  }
+
+  function lockDirectEditTypography(node) {
+    const computed = node.ownerDocument.defaultView.getComputedStyle(node);
+    const previous = {
+      attr: node.getAttribute("data-chiselo-edit-font-lock"),
+      vars: new Map()
+    };
+
+    const assignments = {
+      "--chiselo-edit-font-family": computed.fontFamily || "inherit",
+      "--chiselo-edit-font-size": computed.fontSize || "inherit",
+      "--chiselo-edit-font-weight": computed.fontWeight || "inherit",
+      "--chiselo-edit-line-height": computed.lineHeight || "normal",
+      "--chiselo-edit-letter-spacing": computed.letterSpacing || "normal",
+      "--chiselo-edit-color": computed.color || "inherit"
+    };
+
+    for (const [name, value] of Object.entries(assignments)) {
+      previous.vars.set(name, {
+        value: node.style.getPropertyValue(name),
+        priority: node.style.getPropertyPriority(name)
+      });
+      node.style.setProperty(name, value);
+    }
+    node.setAttribute("data-chiselo-edit-font-lock", "true");
+
+    return () => {
+      if (previous.attr === null) node.removeAttribute("data-chiselo-edit-font-lock");
+      else node.setAttribute("data-chiselo-edit-font-lock", previous.attr);
+      for (const [name, item] of previous.vars) {
+        if (item.value) node.style.setProperty(name, item.value, item.priority);
+        else node.style.removeProperty(name);
+      }
+    };
+  }
+
   function isImageLikeNode(node) {
     return Boolean(node?.matches?.("img,picture,source"));
   }
@@ -2845,6 +2918,7 @@
     selectDirectNode(node);
     pushHistory();
     activeDirectTextEditNode = node;
+    const unlockTypography = lockDirectEditTypography(node);
     node.setAttribute("contenteditable", "true");
     node.setAttribute("spellcheck", "true");
     node.focus();
@@ -2861,6 +2935,7 @@
       if (activeDirectTextEditNode === node) activeDirectTextEditNode = null;
       node.removeAttribute("contenteditable");
       node.removeAttribute("spellcheck");
+      unlockTypography();
       node.removeEventListener("blur", finish);
       node.removeEventListener("keydown", handleEditingKeydown);
       scheduleHTMLTreeChanged();

@@ -163,6 +163,12 @@ final class DirectHTMLCanvasInteractionTest: NSObject, WKNavigationDelegate, WKS
                   if (active !== expectedNode || expectedNode.getAttribute('contenteditable') !== 'true') {
                     throw new Error(`${label} did not enter text editing. active=${active && active.tagName}, target=${dispatchTarget && dispatchTarget.tagName}, editable=${expectedNode.getAttribute('contenteditable')}`);
                   }
+                  if (expectedNode.getAttribute('data-chiselo-edit-font-lock') !== 'true') {
+                    throw new Error(`${label} did not lock computed typography while editing.`);
+                  }
+                  if (!expectedNode.style.getPropertyValue('--chiselo-edit-font-family') || !expectedNode.style.getPropertyValue('--chiselo-edit-font-size')) {
+                    throw new Error(`${label} did not expose typography lock variables.`);
+                  }
                   if (!selectedText) {
                     throw new Error(`${label} entered text editing without selecting text.`);
                   }
@@ -177,6 +183,9 @@ final class DirectHTMLCanvasInteractionTest: NSObject, WKNavigationDelegate, WKS
 
                   expectedNode.blur();
                   await sleep(50);
+                  if (expectedNode.hasAttribute('data-chiselo-edit-font-lock') || expectedNode.style.getPropertyValue('--chiselo-edit-font-family')) {
+                    throw new Error(`${label} leaked temporary typography lock into the document.`);
+                  }
                   return selectedText;
                 }
 
@@ -323,7 +332,6 @@ final class DirectHTMLCanvasInteractionTest: NSObject, WKNavigationDelegate, WKS
 
 let projectRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let editorURL = projectRoot
-    .appendingPathComponent("Sources")
     .appendingPathComponent("Chiselo")
     .appendingPathComponent("Resources")
     .appendingPathComponent("Editor")

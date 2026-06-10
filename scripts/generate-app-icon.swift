@@ -7,7 +7,7 @@ let fileManager = FileManager.default
 
 func outputURL() -> URL {
     let path = CommandLine.arguments.dropFirst().first
-        ?? "Sources/Chiselo/Resources/AppIcon"
+        ?? "Chiselo/Resources/AppIcon"
     if path.hasPrefix("/") {
         return URL(fileURLWithPath: path)
     }

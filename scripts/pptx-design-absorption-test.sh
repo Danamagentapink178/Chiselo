@@ -67,7 +67,7 @@ cat > "$INPUT" <<'HTML'
 </html>
 HTML
 
-swiftc "$ROOT_DIR/Sources/Chiselo/HTMLRenderExporter.swift" "$ROOT_DIR/scripts/export-html-high-fidelity.swift" -o "$EXPORT_BIN"
+swiftc "$ROOT_DIR/Chiselo/HTMLRenderExporter.swift" "$ROOT_DIR/scripts/export-html-high-fidelity.swift" -o "$EXPORT_BIN"
 "$EXPORT_BIN" "$INPUT" "$OUTPUT" editable-pptx
 
 unzip -q "$OUTPUT" -d "$UNZIP_DIR"
