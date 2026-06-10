@@ -178,7 +178,7 @@ Chiselo 0.1.2 Preview
 7. Paste the text from:
 
 ```text
-docs/RELEASE_NOTES_0.1.2_PREVIEW.md
+docs/releases/RELEASE_NOTES_0.1.2_PREVIEW.md
 ```
 
 8. Upload the DMG file.
