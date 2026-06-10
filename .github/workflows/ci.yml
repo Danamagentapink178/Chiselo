@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift build
+        run: swift build
+      - name: JavaScript syntax checks
+        run: |
+          node --check Sources/Chiselo/Resources/Editor/editor.js
+          node --check scripts/generate-digital-transformation-slides.mjs
+      - name: Validate sample deck
+        run: node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide

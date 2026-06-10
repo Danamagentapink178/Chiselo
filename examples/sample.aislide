@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "background": "#f8fafc"
+  },
+  "slides": [
+    {
+      "id": "slide-1",
+      "title": "AI HTML Slide",
+      "elements": [
+        {
+          "id": "title",
+          "type": "text",
+          "x": 86,
+          "y": 64,
+          "w": 720,
+          "h": 86,
+          "rotation": 0,
+          "z": 20,
+          "text": "Chiselo",
+          "style": {
+            "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+            "fontSize": 58,
+            "fontWeight": 760,
+            "lineHeight": 1.05,
+            "color": "#111827",
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "subtitle",
+          "type": "text",
+          "x": 90,
+          "y": 160,
+          "w": 600,
+          "h": 88,
+          "rotation": 0,
+          "z": 19,
+          "text": "A native macOS editor for precise AI-generated HTML slides.",
+          "style": {
+            "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+            "fontSize": 28,
+            "fontWeight": 420,
+            "lineHeight": 1.22,
+            "color": "#475569",
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "panel",
+          "type": "rect",
+          "x": 770,
+          "y": 88,
+          "w": 380,
+          "h": 470,
+          "rotation": 0,
+          "z": 8,
+          "style": {
+            "fill": "#ffffff",
+            "stroke": "#d6dbe5",
+            "strokeWidth": 1,
+            "radius": 18
+          }
+        }
+      ]
+    }
+  ]
+}

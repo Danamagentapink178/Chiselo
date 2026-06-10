@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chiselo Sample HTML Page</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #ece8f4; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #15151b; }
+    body { display: grid; justify-items: center; padding: 28px; }
+    .sheet { position: relative; width: 960px; min-height: 640px; overflow: hidden; background: #f8f5fc; border-radius: 24px; box-shadow: 0 26px 64px rgba(49, 39, 70, .18); }
+    .top-band { position: relative; min-height: 178px; padding: 44px 52px 34px; color: #fff; background: linear-gradient(135deg, #4b3b78, #6d50b4); }
+    .top-band h1 { margin: 0; max-width: 680px; font-size: 46px; line-height: 1.05; letter-spacing: 0; }
+    .band-subtitle { margin: 18px 0 0; max-width: 700px; color: rgba(255,255,255,.86); font-size: 22px; line-height: 1.35; }
+    .content { display: grid; grid-template-columns: 1.08fr .92fr; gap: 24px; padding: 34px 52px 52px; }
+    .card { background: #fff; border: 1px solid #ded5ee; border-radius: 18px; padding: 24px; box-shadow: 0 14px 30px rgba(49, 39, 70, .10); }
+    h2 { margin: 0 0 16px; font-size: 26px; line-height: 1.15; }
+    p, li { font-size: 17px; line-height: 1.55; color: #5f596b; }
+    ul { margin: 0; padding-left: 22px; }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }
+    th, td { border: 1px solid #ded5ee; padding: 10px 12px; text-align: left; font-size: 15px; }
+    th { background: #f5efff; color: #4b3b78; }
+    img { display: block; width: 100%; border-radius: 16px; border: 1px solid #ded5ee; }
+  </style>
+</head>
+<body>
+  <section class="sheet">
+    <header class="top-band">
+      <h1>Chiselo Sample Layout</h1>
+      <p class="band-subtitle">Chisel your HTML. 这是一个用于公开仓库自动测试的普通 HTML 页面。</p>
+    </header>
+
+    <main class="content">
+      <article class="card">
+        <h2>可直接编辑的真实 DOM</h2>
+        <p>点击标题、段落、列表项、图片和表格，Chiselo 会把浏览器渲染结果提升为可调整对象。</p>
+        <ul>
+          <li>衬砌台车弧形模板智能成型工艺及其装备；</li>
+          <li>AI 生成页面的局部文字、位置和尺寸调整；</li>
+          <li>导出干净 HTML、高保真 PDF 和对象级 PPTX。</li>
+        </ul>
+      </article>
+
+      <aside class="card">
+        <h2>图片与表格</h2>
+        <img alt="sample diagram" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='260' viewBox='0 0 520 260'%3E%3Crect width='520' height='260' rx='28' fill='%23f5efff'/%3E%3Ccircle cx='112' cy='92' r='48' fill='%236d50b4'/%3E%3Crect x='200' y='62' width='220' height='32' rx='16' fill='%23ffffff'/%3E%3Crect x='200' y='116' width='260' height='28' rx='14' fill='%23ded5ee'/%3E%3Crect x='200' y='166' width='190' height='28' rx='14' fill='%23ffc107'/%3E%3C/svg%3E">
+        <table>
+          <thead><tr><th>对象</th><th>动作</th></tr></thead>
+          <tbody>
+            <tr><td>图片</td><td>替换、缩放、拖动</td></tr>
+            <tr><td>表格</td><td>增删行列、调整样式</td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </main>
+  </section>
+</body>
+</html>

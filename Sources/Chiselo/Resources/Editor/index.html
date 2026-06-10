@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chiselo Editor</title>
+  <link rel="stylesheet" href="./editor.css">
+</head>
+<body>
+  <main class="editor-shell">
+    <div class="viewport" id="viewport">
+      <div class="stage-outer" id="stageOuter">
+        <section class="stage" id="stage" aria-label="Slide canvas">
+          <div class="slide-surface" id="slideSurface"></div>
+          <div class="element-layer" id="elementLayer"></div>
+          <div class="guide-layer" id="guideLayer"></div>
+          <div class="hover-box" id="hoverBox" hidden></div>
+          <div class="selection-box" id="selectionBox" hidden></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="./editor.js"></script>
+</body>
+</html>

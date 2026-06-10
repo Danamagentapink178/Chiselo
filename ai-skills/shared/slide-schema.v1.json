@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chiselo.local/schema/slide-schema.v1.json",
+  "title": "Chiselo Slide Deck",
+  "type": "object",
+  "required": ["version", "canvas", "slides"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height", "background"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number", "minimum": 320 },
+        "height": { "type": "number", "minimum": 180 },
+        "background": { "type": "string" }
+      }
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "elements"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string" },
+          "elements": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/element" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "element": {
+      "type": "object",
+      "required": ["id", "type", "x", "y", "w", "h", "rotation", "z"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["text", "rect", "image", "line", "ellipse"] },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "w": { "type": "number", "minimum": 1 },
+        "h": { "type": "number", "minimum": 1 },
+        "rotation": { "type": "number" },
+        "z": { "type": "number" },
+        "locked": { "type": "boolean" },
+        "text": { "type": "string" },
+        "src": { "type": "string" },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fontFamily": { "type": "string" },
+            "fontSize": { "type": "number", "minimum": 1 },
+            "fontWeight": { "type": "number" },
+            "lineHeight": { "type": "number", "minimum": 0.5 },
+            "color": { "type": "string" },
+            "fill": { "type": "string" },
+            "stroke": { "type": "string" },
+            "strokeWidth": { "type": "number", "minimum": 0 },
+            "radius": { "type": "number", "minimum": 0 },
+            "textAlign": { "enum": ["left", "center", "right"] }
+          }
+        }
+      }
+    }
+  }
+}

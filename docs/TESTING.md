@@ -1,0 +1,56 @@
+# Testing
+
+## Fast Checks
+
+```bash
+swift build
+node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check scripts/generate-digital-transformation-slides.mjs
+node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide
+```
+
+## Release Preflight
+
+```bash
+scripts/release-preflight.sh
+```
+
+## Core Editor Checks
+
+```bash
+swift scripts/import-smoke-test.swift
+swift scripts/direct-html-canvas-interaction-test.swift
+swift scripts/import-adapter-test.swift
+swift scripts/precision-adjustment-test.swift
+swift scripts/five-slide-acceptance-test.swift
+```
+
+These use the bundled sample HTML page unless you pass a custom HTML path.
+
+## Demo Deck Checks
+
+```bash
+node scripts/generate-digital-transformation-slides.mjs
+swift scripts/digital-transformation-acceptance-test.swift
+swift scripts/html-slide-visual-qa.swift
+```
+
+## Export Checks
+
+```bash
+swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o /tmp/chiselo-export-test
+/tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides.pdf pdf
+/tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-editable.pptx editable-pptx
+/tmp/chiselo-export-test outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-image.pptx image-pptx
+scripts/editable-pptx-export-test.sh
+scripts/pptx-design-absorption-test.sh
+```
+
+## Real-World Regression Files
+
+Keep private or third-party HTML fixtures outside the repository unless they can be legally redistributed. Pass them explicitly:
+
+```bash
+swift scripts/import-smoke-test.swift /path/to/document.html
+swift scripts/direct-html-canvas-interaction-test.swift /path/to/document.html
+```

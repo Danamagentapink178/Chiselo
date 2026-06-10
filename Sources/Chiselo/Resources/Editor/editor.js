@@ -1,0 +1,4551 @@
+(() => {
+  "use strict";
+
+  const viewport = document.getElementById("viewport");
+  const stageOuter = document.getElementById("stageOuter");
+  const stage = document.getElementById("stage");
+  const surface = document.getElementById("slideSurface");
+  const layer = document.getElementById("elementLayer");
+  const guideLayer = document.getElementById("guideLayer");
+  const hoverBox = document.getElementById("hoverBox");
+  const selectionBox = document.getElementById("selectionBox");
+
+  const SNAP_DISTANCE = 6;
+  const MIN_SIZE = 24;
+  const MIN_USER_ZOOM = 0.2;
+  const MAX_USER_ZOOM = 6;
+  const MAX_HTML_TREE_NODES = 260;
+  const MAX_HTML_DIAGNOSTIC_NODES = 520;
+  const MAX_HTML_DIAGNOSTIC_ISSUES = 12;
+  const DIRECT_FIXED_FRAME_SELECTOR = ".slide,.sheet,.page,[data-slide],[data-page]";
+  const handles = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+  const DIRECT_TEXT_BLOCK_SELECTOR = "p,h1,h2,h3,h4,h5,h6,li,figcaption,caption,td,th,button,a,label,pre";
+  const DIRECT_SAFE_INLINE_SELECTOR = "span";
+  const DIRECT_FORMATTING_INLINE_SELECTOR = "strong,em,b,i,u,small,code,mark,time,sub,sup";
+  const DIRECT_TEXT_INLINE_SELECTOR = `${DIRECT_SAFE_INLINE_SELECTOR},${DIRECT_FORMATTING_INLINE_SELECTOR}`;
+  const DIRECT_TEXT_SELECTOR = `${DIRECT_TEXT_BLOCK_SELECTOR},${DIRECT_TEXT_INLINE_SELECTOR},div,section,article,header,footer,aside`;
+
+  let deck = sampleDeck();
+  let editorMode = "deck";
+  let currentSlideIndex = 0;
+  let selectedId = null;
+  let directFrame = null;
+  let directSelectedNode = null;
+  let directSelectedNodes = [];
+  let directHadDoctype = true;
+  let directBaseHref = "";
+  let directLayoutMode = "free";
+  let pendingDirectTextEditNode = null;
+  let activeDirectTextEditNode = null;
+  let htmlTreeTimer = null;
+  let htmlTreeIdleId = null;
+  let htmlDiagnosticsTimer = null;
+  let directLayoutTimer = null;
+  let directMutationRefreshPending = false;
+  let directTreeRefreshPending = false;
+  let directHoverFrame = 0;
+  let pendingDirectHoverNode = null;
+  let lastHTMLTreeSignature = "";
+  let lastHTMLDiagnosticsSignature = "";
+  let htmlTreeTextCache = null;
+  let selectionBridgeTimer = null;
+  let selectionBoxFrame = 0;
+  let pendingSelectionPayload = null;
+  let scale = 1;
+  let fitScale = 1;
+  let userZoom = 1;
+  let activeGesture = null;
+  let historyPast = [];
+  let historyFuture = [];
+  let historyCoalesceKey = null;
+  let historyCoalesceUntil = 0;
+  let suppressHistory = false;
+  let documentDirtyPosted = false;
+
+  function sampleDeck() {
+    return {
+      version: 1,
+      canvas: {
+        width: 1280,
+        height: 720,
+        background: "#f8fafc"
+      },
+      slides: [
+        {
+          id: "slide-1",
+          title: "AI HTML 页面",
+          elements: [
+            {
+              id: "title",
+              type: "text",
+              x: 86,
+              y: 64,
+              w: 720,
+              h: 86,
+              rotation: 0,
+              z: 20,
+              text: "Chiselo",
+              style: {
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+                fontSize: 58,
+                fontWeight: 760,
+                lineHeight: 1.05,
+                color: "#111827",
+                textAlign: "left"
+              }
+            },
+            {
+              id: "subtitle",
+              type: "text",
+              x: 90,
+              y: 160,
+              w: 600,
+              h: 88,
+              rotation: 0,
+              z: 19,
+              text: "HTML 主资产，Office 式可视化编辑，多格式输出。",
+              style: {
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                fontSize: 28,
+                fontWeight: 420,
+                lineHeight: 1.22,
+                color: "#475569",
+                textAlign: "left"
+              }
+            },
+            {
+              id: "panel",
+              type: "rect",
+              x: 770,
+              y: 88,
+              w: 380,
+              h: 470,
+              rotation: 0,
+              z: 8,
+              style: {
+                fill: "#ffffff",
+                stroke: "#d6dbe5",
+                strokeWidth: 1,
+                radius: 18
+              }
+            },
+            {
+              id: "accent",
+              type: "rect",
+              x: 818,
+              y: 144,
+              w: 284,
+              h: 86,
+              rotation: 0,
+              z: 12,
+              style: {
+                fill: "#1769ff",
+                stroke: "#1769ff",
+                strokeWidth: 0,
+                radius: 14
+              }
+            },
+            {
+              id: "metric",
+              type: "text",
+              x: 846,
+              y: 161,
+              w: 230,
+              h: 54,
+              rotation: 0,
+              z: 16,
+              text: "1280 x 720",
+              style: {
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+                fontSize: 34,
+                fontWeight: 720,
+                lineHeight: 1.05,
+                color: "#ffffff",
+                textAlign: "center"
+              }
+            },
+            {
+              id: "note",
+              type: "text",
+              x: 816,
+              y: 282,
+              w: 290,
+              h: 154,
+              rotation: 0,
+              z: 16,
+              text: "Drag, resize, snap, adjust exact geometry, then save as schema or export clean HTML.",
+              style: {
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                fontSize: 24,
+                fontWeight: 460,
+                lineHeight: 1.28,
+                color: "#334155",
+                textAlign: "left"
+              }
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function currentSlide() {
+    const index = Math.min(Math.max(currentSlideIndex, 0), deck.slides.length - 1);
+    currentSlideIndex = index;
+    return deck.slides[index];
+  }
+
+  function selectedElement() {
+    if (editorMode === "html") return directSelectedElement();
+    if (activeGesture?.mode === "deck" && activeGesture.selectionPayloadBase && activeGesture.lastRect) {
+      return {
+        ...activeGesture.selectionPayloadBase,
+        x: activeGesture.lastRect.x,
+        y: activeGesture.lastRect.y,
+        w: activeGesture.lastRect.w,
+        h: activeGesture.lastRect.h,
+        rotation: activeGesture.lastRect.rotation || 0
+      };
+    }
+    return currentSlide().elements.find((element) => element.id === selectedId) || null;
+  }
+
+  function sanitizeBridgeValue(value, seen = new WeakSet()) {
+    if (value === null) return null;
+
+    const type = typeof value;
+    if (type === "string" || type === "boolean") return value;
+    if (type === "number") return Number.isFinite(value) ? value : null;
+    if (type === "undefined" || type === "function" || type === "symbol") return undefined;
+
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => sanitizeBridgeValue(item, seen))
+        .filter((item) => item !== undefined);
+    }
+
+    if (type === "object") {
+      if (seen.has(value)) return undefined;
+      seen.add(value);
+
+      const output = {};
+      for (const [key, item] of Object.entries(value)) {
+        const sanitized = sanitizeBridgeValue(item, seen);
+        if (sanitized !== undefined) output[key] = sanitized;
+      }
+      seen.delete(value);
+      return output;
+    }
+
+    return undefined;
+  }
+
+  function postMessage(type, payload = {}) {
+    const handler = window.webkit?.messageHandlers?.chiselo;
+    if (!handler) return;
+
+    const body = { type, ...payload };
+    try {
+      handler.postMessage(body);
+    } catch {
+      try {
+        handler.postMessage(sanitizeBridgeValue(body) || { type });
+      } catch {
+        // Browser preview fallback.
+      }
+    }
+  }
+
+  function postDeckChanged() {
+    if (editorMode === "html") return;
+    postMessage("deckChanged", { deck, slideIndex: currentSlideIndex });
+  }
+
+  function selectionPayload() {
+    const directNodes = editorMode === "html" ? directSelectionNodes() : [];
+    const activePath = activeGesture?.mode === "html" ? activeGesture.selectionPayloadBase?.htmlPath : null;
+    return {
+      element: selectedElement(),
+      slideIndex: currentSlideIndex,
+      path: editorMode === "html" && directNodes.length > 1
+        ? (activePath || `已选中 ${directNodes.length} 个对象`)
+        : editorMode === "html" && directSelectedNode
+          ? (activePath || directNodePath(directSelectedNode))
+          : null
+    };
+  }
+
+  function flushSelectionChanged() {
+    const payload = pendingSelectionPayload || selectionPayload();
+    pendingSelectionPayload = null;
+    postMessage("selectionChanged", payload);
+  }
+
+  function postSelectionChanged(options = {}) {
+    pendingSelectionPayload = options.payload || null;
+
+    if (options.immediate) {
+      clearTimeout(selectionBridgeTimer);
+      selectionBridgeTimer = null;
+      flushSelectionChanged();
+      return;
+    }
+
+    if (selectionBridgeTimer) return;
+    selectionBridgeTimer = setTimeout(() => {
+      selectionBridgeTimer = null;
+      flushSelectionChanged();
+    }, 32);
+  }
+
+  function postHTMLTreeChanged() {
+    if (editorMode !== "html") return;
+    const tree = buildHTMLTree();
+    const signature = JSON.stringify(tree);
+    if (signature === lastHTMLTreeSignature) return;
+    lastHTMLTreeSignature = signature;
+    const diagnostics = getImportDiagnostics();
+    lastHTMLDiagnosticsSignature = JSON.stringify(diagnostics);
+    postMessage("htmlTreeChanged", { tree, diagnostics });
+  }
+
+  function postHTMLDiagnosticsChanged() {
+    if (editorMode !== "html") return;
+    const diagnostics = getImportDiagnostics();
+    const signature = JSON.stringify(diagnostics);
+    if (signature === lastHTMLDiagnosticsSignature) return;
+    lastHTMLDiagnosticsSignature = signature;
+    postMessage("htmlDiagnosticsChanged", { diagnostics });
+  }
+
+  function scheduleHTMLTreeChanged() {
+    if (editorMode !== "html") return;
+    clearTimeout(htmlTreeTimer);
+    if (htmlTreeIdleId && window.cancelIdleCallback) {
+      window.cancelIdleCallback(htmlTreeIdleId);
+      htmlTreeIdleId = null;
+    }
+    htmlTreeTimer = setTimeout(() => {
+      if (window.requestIdleCallback) {
+        htmlTreeIdleId = window.requestIdleCallback(() => {
+          htmlTreeIdleId = null;
+          postHTMLTreeChanged();
+        }, { timeout: 500 });
+      } else {
+        postHTMLTreeChanged();
+      }
+    }, 140);
+  }
+
+  function scheduleHTMLDiagnosticsChanged() {
+    if (editorMode !== "html") return;
+    clearTimeout(htmlDiagnosticsTimer);
+    htmlDiagnosticsTimer = setTimeout(() => {
+      htmlDiagnosticsTimer = null;
+      postHTMLDiagnosticsChanged();
+    }, 120);
+  }
+
+  function scheduleDirectLayoutRefresh() {
+    if (editorMode !== "html") return;
+    clearTimeout(directLayoutTimer);
+    const delay = activeDirectTextEditNode?.isConnected ? 96 : 40;
+    directLayoutTimer = setTimeout(() => {
+      fitStage({ preserveScale: true });
+      updateSelectionBox();
+    }, delay);
+  }
+
+  function mutationsAffectHTMLTree(mutations) {
+    for (const mutation of mutations) {
+      if (mutation.type === "childList" || mutation.type === "characterData") {
+        return true;
+      }
+
+      if (mutation.type !== "attributes") continue;
+      const name = mutation.attributeName || "";
+      if (name === "id" || name === "class" || name === "src" || name === "alt" || name === "href" || name === "title" || name === "hidden" || name === "aria-label") {
+        return true;
+      }
+
+      if (name.startsWith("data-") && !name.startsWith("data-chiselo")) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function scheduleSelectionBoxUpdate() {
+    if (selectionBoxFrame) return;
+    selectionBoxFrame = requestAnimationFrame(() => {
+      selectionBoxFrame = 0;
+      updateSelectionBox();
+    });
+  }
+
+  function pushHistory(options = {}) {
+    if (suppressHistory) return;
+    markDocumentDirty();
+
+    const key = options.coalesceKey || null;
+    const interval = Number.isFinite(options.interval) ? options.interval : 700;
+    const now = performance.now();
+    if (key && historyCoalesceKey === key && now < historyCoalesceUntil) {
+      historyCoalesceUntil = now + interval;
+      return;
+    }
+
+    historyCoalesceKey = key;
+    historyCoalesceUntil = key ? now + interval : 0;
+    historyPast.push(currentSnapshot());
+    if (historyPast.length > 100) historyPast.shift();
+    historyFuture = [];
+  }
+
+  function resetHistoryCoalescing() {
+    historyCoalesceKey = null;
+    historyCoalesceUntil = 0;
+  }
+
+  function markDocumentDirty() {
+    if (documentDirtyPosted) return;
+    documentDirtyPosted = true;
+    postMessage("documentDirty");
+  }
+
+  function clearDirty() {
+    documentDirtyPosted = false;
+  }
+
+  function currentSnapshot() {
+    if (editorMode === "html") {
+      return JSON.stringify({ mode: "html", html: exportDirectHTML(), baseHref: directBaseHref });
+    }
+
+    return JSON.stringify({ mode: "deck", deck });
+  }
+
+  async function restoreFromSnapshot(snapshot) {
+    suppressHistory = true;
+    resetHistoryCoalescing();
+    const parsed = JSON.parse(snapshot);
+
+    if (parsed.mode === "html") {
+      await loadDirectHTML(parsed.html, parsed.baseHref || directBaseHref, { resetView: false, preserveDirty: true });
+    } else {
+      deck = parsed.deck || parsed;
+      editorMode = "deck";
+      currentSlideIndex = Math.min(currentSlideIndex, deck.slides.length - 1);
+      selectedId = null;
+      directSelectedNode = null;
+      render();
+      postDeckChanged();
+      postSelectionChanged({ immediate: true });
+    }
+
+    suppressHistory = false;
+  }
+
+  function undo() {
+    if (!historyPast.length) return;
+    resetHistoryCoalescing();
+    historyFuture.push(currentSnapshot());
+    markDocumentDirty();
+    void restoreFromSnapshot(historyPast.pop());
+  }
+
+  function redo() {
+    if (!historyFuture.length) return;
+    resetHistoryCoalescing();
+    historyPast.push(currentSnapshot());
+    markDocumentDirty();
+    void restoreFromSnapshot(historyFuture.pop());
+  }
+
+  function fitStage(options = {}) {
+    const canvas = editorMode === "html" ? directCanvas() : deck.canvas;
+    const bounds = viewport.getBoundingClientRect();
+    const pad = 68;
+    const previousScale = scale;
+    const fitX = Math.max(0.1, (bounds.width - pad) / canvas.width);
+    const fitY = Math.max(0.1, (bounds.height - pad) / canvas.height);
+    fitScale = editorMode === "html"
+      ? Math.min(fitX, 1.35)
+      : Math.min(fitX, fitY, 1.35);
+    if (options.preserveScale && Number.isFinite(previousScale) && previousScale > 0) {
+      scale = clampNumber(previousScale, 0.05, 8);
+      userZoom = scale / Math.max(fitScale, 0.001);
+    } else {
+      scale = clampNumber(fitScale * userZoom, 0.05, 8);
+    }
+
+    stage.style.width = `${canvas.width}px`;
+    stage.style.height = `${canvas.height}px`;
+    stage.style.transform = `scale(${scale})`;
+    stageOuter.style.width = `${canvas.width * scale}px`;
+    stageOuter.style.height = `${canvas.height * scale}px`;
+    applyOverlayScaleVariables();
+    const overflowsX = canvas.width * scale + pad > bounds.width;
+    const overflowsY = canvas.height * scale + pad > bounds.height;
+    viewport.classList.toggle("is-scrollable", overflowsX || overflowsY);
+    viewport.classList.toggle("is-overflow-x", overflowsX);
+    viewport.classList.toggle("is-overflow-y", overflowsY);
+  }
+
+  function clampNumber(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function resetZoom() {
+    userZoom = 1;
+  }
+
+  function applyOverlayScaleVariables() {
+    const inverse = 1 / Math.max(scale, 0.05);
+    stage.style.setProperty("--selection-border-width", `${Math.max(1, 2 * inverse)}px`);
+    stage.style.setProperty("--selection-radius", `${8 * inverse}px`);
+    const handleSize = Math.max(12, 14 * inverse);
+    stage.style.setProperty("--handle-size", `${handleSize}px`);
+    stage.style.setProperty("--handle-half", `${handleSize / 2}px`);
+    stage.style.setProperty("--handle-offset", `${-(handleSize / 2)}px`);
+    stage.style.setProperty("--toolbar-offset", `${-42 * inverse}px`);
+    stage.style.setProperty("--hover-label-offset", `${-28 * inverse}px`);
+    stage.style.setProperty("--overlay-scale", `${inverse}`);
+  }
+
+  function viewportPointFromEvent(event) {
+    if (directFrame?.contentWindow && event.view === directFrame.contentWindow) {
+      const frameRect = directFrame.getBoundingClientRect();
+      return {
+        x: frameRect.left + event.clientX * scale,
+        y: frameRect.top + event.clientY * scale
+      };
+    }
+
+    return { x: event.clientX, y: event.clientY };
+  }
+
+  function zoomAtPoint(nextUserZoom, point) {
+    const stageRect = stage.getBoundingClientRect();
+    const localPoint = {
+      x: (point.x - stageRect.left) / scale,
+      y: (point.y - stageRect.top) / scale
+    };
+
+    userZoom = clampNumber(nextUserZoom, MIN_USER_ZOOM, MAX_USER_ZOOM);
+    fitStage();
+
+    const nextStageRect = stage.getBoundingClientRect();
+    const nextPoint = {
+      x: nextStageRect.left + localPoint.x * scale,
+      y: nextStageRect.top + localPoint.y * scale
+    };
+    viewport.scrollLeft += nextPoint.x - point.x;
+    viewport.scrollTop += nextPoint.y - point.y;
+    updateSelectionBox();
+  }
+
+  function handleViewportWheel(event) {
+    if (!(event.metaKey || event.ctrlKey)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const point = viewportPointFromEvent(event);
+    const zoomFactor = Math.exp(-event.deltaY * 0.002);
+    zoomAtPoint(userZoom * zoomFactor, point);
+  }
+
+  function directCanvas() {
+    const doc = directFrame?.contentDocument;
+    const root = doc?.documentElement;
+    const body = doc?.body;
+    const width = Math.max(640, root?.scrollWidth || 0, body?.scrollWidth || 0, directFrame?.offsetWidth || 0);
+    const height = Math.max(360, root?.scrollHeight || 0, body?.scrollHeight || 0, directFrame?.offsetHeight || 0);
+    return { width: Math.ceil(width), height: Math.ceil(height), background: "#ffffff" };
+  }
+
+  function render() {
+    if (editorMode === "html") {
+      renderDirectHTML({ preserveScale: true });
+      return;
+    }
+
+    stage.classList.remove("is-html-document");
+    hoverBox.hidden = true;
+    fitStage();
+    surface.style.background = deck.canvas.background || "#ffffff";
+    surface.innerHTML = "";
+    layer.innerHTML = "";
+
+    const elements = [...currentSlide().elements].sort((a, b) => a.z - b.z);
+    for (const element of elements) {
+      layer.appendChild(createElementNode(element));
+    }
+
+    updateSelectionBox();
+    postDeckChanged();
+  }
+
+  function renderDirectHTML(options = {}) {
+    stage.classList.add("is-html-document");
+    fitStage({ preserveScale: Boolean(options.preserveScale) });
+    surface.style.background = "#ffffff";
+    layer.innerHTML = "";
+    updateSelectionBox();
+  }
+
+  function createElementNode(element) {
+    const node = document.createElement("div");
+    node.className = "element";
+    node.dataset.id = element.id;
+    node.dataset.type = element.type;
+    if (element.locked) node.classList.add("is-locked");
+    applyElementStyle(node, element);
+
+    if (element.type === "text") {
+      const content = document.createElement("div");
+      content.className = "text-content";
+      content.textContent = element.text || "";
+      applyTextStyle(content, element.style || {});
+      content.addEventListener("dblclick", (event) => {
+        event.stopPropagation();
+        beginTextEdit(element.id, content);
+      });
+      node.appendChild(content);
+    } else if (element.type === "image") {
+      const image = document.createElement("img");
+      image.className = "image-content";
+      image.alt = element.imageAlt || "";
+      image.draggable = false;
+      image.src = element.imageSource || "";
+      applyImageStyle(image, element.style || {});
+      node.appendChild(image);
+    } else {
+      const shape = document.createElement("div");
+      shape.className = "shape-content";
+      applyShapeStyle(shape, element.style || {});
+      node.appendChild(shape);
+    }
+
+    node.addEventListener("pointerdown", (event) => beginDrag(event, element.id));
+    return node;
+  }
+
+  function applyElementStyle(node, element) {
+    node.style.left = `${element.x}px`;
+    node.style.top = `${element.y}px`;
+    node.style.width = `${element.w}px`;
+    node.style.height = `${element.h}px`;
+    node.style.zIndex = `${element.z}`;
+    node.style.transform = `rotate(${element.rotation || 0}deg)`;
+  }
+
+  function applyTextStyle(node, style) {
+    node.style.fontFamily = style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif";
+    node.style.fontSize = `${style.fontSize || 28}px`;
+    node.style.fontWeight = `${style.fontWeight || 400}`;
+    node.style.lineHeight = `${style.lineHeight || 1.2}`;
+    node.style.color = style.color || "#111827";
+    node.style.textAlign = style.textAlign || "left";
+  }
+
+  function applyShapeStyle(node, style) {
+    node.style.background = style.fill || "#ffffff";
+    node.style.border = `${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`;
+    node.style.borderRadius = `${style.radius || 0}px`;
+  }
+
+  function applyImageStyle(node, style) {
+    node.style.width = "100%";
+    node.style.height = "100%";
+    node.style.display = "block";
+    node.style.objectFit = "cover";
+    node.style.border = `${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`;
+    node.style.borderRadius = `${style.radius || 0}px`;
+  }
+
+  function updateSelectionBox() {
+    if (editorMode === "html") {
+      updateDirectSelectionBox();
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element) {
+      selectionBox.hidden = true;
+      selectionBox.innerHTML = "";
+      delete selectionBox.dataset.selectedId;
+      delete selectionBox.dataset.locked;
+      return;
+    }
+
+    const locked = Boolean(element.locked);
+    const shouldRebuildChrome = selectionBox.dataset.selectedId !== element.id || selectionBox.dataset.locked !== String(locked);
+    selectionBox.hidden = false;
+    selectionBox.classList.toggle("is-locked", locked);
+    selectionBox.style.left = `${element.x}px`;
+    selectionBox.style.top = `${element.y}px`;
+    selectionBox.style.width = `${element.w}px`;
+    selectionBox.style.height = `${element.h}px`;
+    selectionBox.style.transform = `rotate(${element.rotation || 0}deg)`;
+
+    if (!shouldRebuildChrome) return;
+
+    selectionBox.dataset.selectedId = element.id;
+    selectionBox.dataset.locked = String(locked);
+    selectionBox.innerHTML = "";
+
+    for (const handle of handles) {
+      const grip = document.createElement("div");
+      grip.className = "resize-handle";
+      grip.dataset.handle = handle;
+      grip.addEventListener("pointerdown", (event) => beginResize(event, handle));
+      selectionBox.appendChild(grip);
+    }
+
+    if (element.locked) {
+      const badge = document.createElement("div");
+      badge.className = "lock-badge";
+      badge.textContent = "Locked";
+      selectionBox.appendChild(badge);
+    }
+  }
+
+  function selectElement(id) {
+    if (selectedId === id) return;
+    selectedId = id;
+    updateSelectionBox();
+    postSelectionChanged({ immediate: true });
+  }
+
+  function selectElementById(id) {
+    if (editorMode !== "deck") return null;
+    const element = currentSlide().elements.find((item) => item.id === id);
+    if (!element) return null;
+    selectElement(id);
+    return selectedElement();
+  }
+
+  function clearSelection() {
+    if (editorMode === "html") {
+      directSelectedNode = null;
+      directSelectedNodes = [];
+      selectedId = null;
+      updateSelectionBox();
+      postSelectionChanged();
+      return;
+    }
+
+    selectedId = null;
+    updateSelectionBox();
+    postSelectionChanged({ immediate: true });
+  }
+
+  function pointFromEvent(event) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / scale,
+      y: (event.clientY - rect.top) / scale
+    };
+  }
+
+  function beginDrag(event, id) {
+    if (event.button !== 0) return;
+
+    const element = currentSlide().elements.find((item) => item.id === id);
+    if (!element) return;
+
+    selectElement(id);
+    if (element.locked || event.target.closest("[contenteditable='true']")) return;
+
+    event.preventDefault();
+    pushHistory();
+
+    const startRect = rectOf(element);
+    activeGesture = {
+      mode: "deck",
+      type: "drag",
+      id,
+      startPoint: pointFromEvent(event),
+      startRect,
+      lastRect: startRect,
+      selectionPayloadBase: clone(element)
+    };
+
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic pointer events and some WebKit edge cases can reject capture.
+    }
+    document.addEventListener("pointermove", continueGesture);
+    document.addEventListener("pointerup", endGesture, { once: true });
+  }
+
+  function beginResize(event, handle) {
+    if (editorMode === "html") {
+      beginDirectResize(event, handle);
+      return;
+    }
+
+    if (event.button !== 0) return;
+    const element = selectedElement();
+    if (!element || element.locked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    pushHistory();
+
+    const startRect = rectOf(element);
+    activeGesture = {
+      mode: "deck",
+      type: "resize",
+      id: element.id,
+      handle,
+      startPoint: pointFromEvent(event),
+      startRect,
+      lastRect: startRect,
+      selectionPayloadBase: clone(element),
+      ratio: element.w / element.h
+    };
+
+    document.addEventListener("pointermove", continueGesture);
+    document.addEventListener("pointerup", endGesture, { once: true });
+  }
+
+  function continueGesture(event) {
+    if (!activeGesture) return;
+
+    if (activeGesture.mode === "html") {
+      continueDirectGesture(event);
+      return;
+    }
+
+    const element = currentSlide().elements.find((item) => item.id === activeGesture.id);
+    if (!element) return;
+
+    const point = pointFromEvent(event);
+    const dx = point.x - activeGesture.startPoint.x;
+    const dy = point.y - activeGesture.startPoint.y;
+    let nextRect = rectOf(element);
+
+    if (activeGesture.type === "drag") {
+      nextRect = {
+        ...activeGesture.startRect,
+        x: activeGesture.startRect.x + dx,
+        y: activeGesture.startRect.y + dy
+      };
+    }
+
+    if (activeGesture.type === "resize") {
+      nextRect = resizeRect(activeGesture.startRect, activeGesture.handle, dx, dy, event.shiftKey ? activeGesture.ratio : null);
+    }
+
+    const snapped = snapRect(nextRect, element.id);
+    activeGesture.lastRect = snapped.rect;
+    Object.assign(element, snapped.rect);
+    updateDeckElementNode(element);
+    scheduleSelectionBoxUpdate();
+    showGuides(snapped.guides);
+    postSelectionChanged();
+  }
+
+  function endGesture() {
+    if (!activeGesture) return;
+    const wasDirect = activeGesture.mode === "html";
+    activeGesture = null;
+    hideGuides();
+    if (!wasDirect) postDeckChanged();
+    if (wasDirect && directMutationRefreshPending) {
+      directMutationRefreshPending = false;
+      scheduleDirectLayoutRefresh();
+      if (directTreeRefreshPending) {
+        directTreeRefreshPending = false;
+        scheduleHTMLTreeChanged();
+      }
+    }
+    updateSelectionBox();
+    postSelectionChanged({ immediate: true });
+    document.removeEventListener("pointermove", continueGesture);
+
+    const doc = directFrame?.contentDocument;
+    doc?.removeEventListener("pointermove", continueGesture);
+  }
+
+  function rectOf(element) {
+    return {
+      x: Number(element.x),
+      y: Number(element.y),
+      w: Number(element.w),
+      h: Number(element.h),
+      rotation: Number(element.rotation || 0)
+    };
+  }
+
+  function resizeRect(rect, handle, dx, dy, ratio) {
+    let next = { ...rect };
+
+    if (handle.includes("e")) next.w = rect.w + dx;
+    if (handle.includes("s")) next.h = rect.h + dy;
+    if (handle.includes("w")) {
+      next.x = rect.x + dx;
+      next.w = rect.w - dx;
+    }
+    if (handle.includes("n")) {
+      next.y = rect.y + dy;
+      next.h = rect.h - dy;
+    }
+
+    if (ratio && handle.length === 2) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        const sign = handle.includes("n") ? -1 : 1;
+        next.h = Math.max(MIN_SIZE, next.w / ratio);
+        if (sign < 0) next.y = rect.y + rect.h - next.h;
+      } else {
+        const sign = handle.includes("w") ? -1 : 1;
+        next.w = Math.max(MIN_SIZE, next.h * ratio);
+        if (sign < 0) next.x = rect.x + rect.w - next.w;
+      }
+    }
+
+    if (next.w < MIN_SIZE) {
+      if (handle.includes("w")) next.x = rect.x + rect.w - MIN_SIZE;
+      next.w = MIN_SIZE;
+    }
+
+    if (next.h < MIN_SIZE) {
+      if (handle.includes("n")) next.y = rect.y + rect.h - MIN_SIZE;
+      next.h = MIN_SIZE;
+    }
+
+    return next;
+  }
+
+  function snapRect(inputRect, activeId) {
+    const rect = { ...inputRect };
+    const guides = [];
+    const canvas = deck.canvas;
+
+    const xCandidates = [
+      { value: 0, label: "canvas-left" },
+      { value: canvas.width / 2, label: "canvas-center-x" },
+      { value: canvas.width, label: "canvas-right" }
+    ];
+    const yCandidates = [
+      { value: 0, label: "canvas-top" },
+      { value: canvas.height / 2, label: "canvas-center-y" },
+      { value: canvas.height, label: "canvas-bottom" }
+    ];
+
+    for (const element of currentSlide().elements) {
+      if (element.id === activeId) continue;
+      xCandidates.push({ value: element.x, label: `${element.id}-left` });
+      xCandidates.push({ value: element.x + element.w / 2, label: `${element.id}-center-x` });
+      xCandidates.push({ value: element.x + element.w, label: `${element.id}-right` });
+      yCandidates.push({ value: element.y, label: `${element.id}-top` });
+      yCandidates.push({ value: element.y + element.h / 2, label: `${element.id}-center-y` });
+      yCandidates.push({ value: element.y + element.h, label: `${element.id}-bottom` });
+    }
+
+    const xEdges = [
+      { value: () => rect.x, apply: (value) => { rect.x = value; } },
+      { value: () => rect.x + rect.w / 2, apply: (value) => { rect.x = value - rect.w / 2; } },
+      { value: () => rect.x + rect.w, apply: (value) => { rect.x = value - rect.w; } }
+    ];
+    const yEdges = [
+      { value: () => rect.y, apply: (value) => { rect.y = value; } },
+      { value: () => rect.y + rect.h / 2, apply: (value) => { rect.y = value - rect.h / 2; } },
+      { value: () => rect.y + rect.h, apply: (value) => { rect.y = value - rect.h; } }
+    ];
+
+    const xSnap = bestSnap(xEdges, xCandidates);
+    if (xSnap) {
+      xSnap.edge.apply(xSnap.candidate.value);
+      guides.push({ axis: "x", value: xSnap.candidate.value });
+    }
+
+    const ySnap = bestSnap(yEdges, yCandidates);
+    if (ySnap) {
+      ySnap.edge.apply(ySnap.candidate.value);
+      guides.push({ axis: "y", value: ySnap.candidate.value });
+    }
+
+    rect.x = Math.round(rect.x);
+    rect.y = Math.round(rect.y);
+    rect.w = Math.round(rect.w);
+    rect.h = Math.round(rect.h);
+
+    return { rect, guides };
+  }
+
+  function bestSnap(edges, candidates) {
+    let best = null;
+
+    for (const edge of edges) {
+      for (const candidate of candidates) {
+        const distance = Math.abs(edge.value() - candidate.value);
+        if (distance <= SNAP_DISTANCE && (!best || distance < best.distance)) {
+          best = { edge, candidate, distance };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  function showGuides(guides) {
+    guideLayer.innerHTML = "";
+
+    for (const guide of guides) {
+      const node = document.createElement("div");
+      node.className = `guide ${guide.axis}`;
+      if (guide.axis === "x") node.style.left = `${guide.value}px`;
+      if (guide.axis === "y") node.style.top = `${guide.value}px`;
+      guideLayer.appendChild(node);
+    }
+  }
+
+  function hideGuides() {
+    guideLayer.innerHTML = "";
+  }
+
+  function renderWithoutBridge() {
+    suppressHistory = true;
+    const previousSelected = selectedId;
+    fitStage();
+    surface.style.background = deck.canvas.background || "#ffffff";
+    layer.innerHTML = "";
+    const elements = [...currentSlide().elements].sort((a, b) => a.z - b.z);
+    for (const element of elements) layer.appendChild(createElementNode(element));
+    selectedId = previousSelected;
+    updateSelectionBox();
+    suppressHistory = false;
+  }
+
+  function updateDeckElementNode(element) {
+    const node = layer.querySelector(`[data-id="${cssEscape(element.id)}"]`);
+    if (!node) {
+      renderWithoutBridge();
+      return;
+    }
+    applyElementStyle(node, element);
+  }
+
+  function beginTextEdit(id, content) {
+    const element = currentSlide().elements.find((item) => item.id === id);
+    if (!element || element.locked) return;
+
+    selectElement(id);
+    pushHistory();
+    content.contentEditable = "true";
+    content.focus();
+    document.execCommand("selectAll", false, null);
+
+    const finish = () => {
+      content.contentEditable = "false";
+      element.text = content.textContent || "";
+      postDeckChanged();
+      postSelectionChanged({ immediate: true });
+      content.removeEventListener("blur", finish);
+    };
+
+    content.addEventListener("blur", finish);
+  }
+
+  function updateElement(nextElement) {
+    if (editorMode === "html") {
+      updateDirectElement(nextElement);
+      return;
+    }
+
+    const elements = currentSlide().elements;
+    const index = elements.findIndex((element) => element.id === nextElement.id);
+    if (index < 0) return;
+
+    pushHistory();
+    elements[index] = { ...elements[index], ...nextElement };
+    selectedId = nextElement.id;
+    render();
+    postSelectionChanged({ immediate: true });
+  }
+
+  function command(name) {
+    switch (name) {
+      case "undo":
+        undo();
+        return;
+      case "redo":
+        redo();
+        return;
+      case "delete":
+        deleteSelected();
+        return;
+      case "duplicate":
+        duplicateSelected();
+        return;
+      case "bringToFront":
+        arrangeSelected("front");
+        return;
+      case "sendToBack":
+        arrangeSelected("back");
+        return;
+      case "bringForward":
+        arrangeSelected("forward");
+        return;
+      case "sendBackward":
+        arrangeSelected("backward");
+        return;
+      case "toggleLock":
+        toggleLock();
+        return;
+      case "alignLeft":
+        alignSelected("left");
+        return;
+      case "alignCenter":
+        alignSelected("center");
+        return;
+      case "alignRight":
+        alignSelected("right");
+        return;
+      case "alignTop":
+        alignSelected("top");
+        return;
+      case "alignMiddle":
+        alignSelected("middle");
+        return;
+      case "alignBottom":
+        alignSelected("bottom");
+        return;
+      case "fitWidth":
+        fitSelected("width");
+        return;
+      case "fitHeight":
+        fitSelected("height");
+        return;
+      case "fitPage":
+        fitSelected("page");
+        return;
+      case "snapToGrid":
+        snapSelectedToGrid();
+        return;
+      case "nudgeLeft":
+        nudgeSelected(-1, 0);
+        return;
+      case "nudgeRight":
+        nudgeSelected(1, 0);
+        return;
+      case "nudgeUp":
+        nudgeSelected(0, -1);
+        return;
+      case "nudgeDown":
+        nudgeSelected(0, 1);
+        return;
+      case "nudgeLeftBig":
+        nudgeSelected(-10, 0);
+        return;
+      case "nudgeRightBig":
+        nudgeSelected(10, 0);
+        return;
+      case "nudgeUpBig":
+        nudgeSelected(0, -10);
+        return;
+      case "nudgeDownBig":
+        nudgeSelected(0, 10);
+        return;
+      case "selectParent":
+        selectDirectRelative("parent");
+        return;
+      case "selectFirstChild":
+        selectDirectRelative("child");
+        return;
+      case "selectPreviousSibling":
+        selectDirectRelative("previous");
+        return;
+      case "selectNextSibling":
+        selectDirectRelative("next");
+        return;
+      case "selectVisibleChildren":
+        selectDirectVisibleChildren();
+        return;
+      case "selectSameClass":
+        selectDirectSameClass();
+        return;
+      case "clearSelection":
+        clearSelection();
+        return;
+      case "setLayoutFree":
+        setDirectLayoutMode("free");
+        return;
+      case "setLayoutTransform":
+        setDirectLayoutMode("transform");
+        return;
+      case "tableAddRowAfter":
+        tableAddRowAfter();
+        return;
+      case "tableDeleteRow":
+        tableDeleteRow();
+        return;
+      case "tableAddColumnAfter":
+        tableAddColumnAfter();
+        return;
+      case "tableDeleteColumn":
+        tableDeleteColumn();
+        return;
+      case "cellAlignLeft":
+        styleSelectedTableCell({ textAlign: "left" });
+        return;
+      case "cellAlignCenter":
+        styleSelectedTableCell({ textAlign: "center" });
+        return;
+      case "cellAlignRight":
+        styleSelectedTableCell({ textAlign: "right" });
+        return;
+      case "cellStyleHeader":
+        styleSelectedTableCell({
+          fill: "rgb(243, 244, 246)",
+          color: "rgb(17, 24, 39)",
+          fontWeight: 700,
+          stroke: "rgb(209, 213, 219)",
+          strokeWidth: 1
+        });
+        return;
+      case "cellStyleSoft":
+        styleSelectedTableCell({
+          fill: "rgb(239, 246, 255)",
+          color: "rgb(30, 64, 175)",
+          stroke: "rgb(147, 197, 253)",
+          strokeWidth: 1
+        });
+        return;
+      default:
+        return;
+    }
+  }
+
+  function deleteSelected() {
+    if (editorMode === "html") {
+      deleteDirectSelected();
+      return;
+    }
+
+    if (!selectedId) return;
+    pushHistory();
+    currentSlide().elements = currentSlide().elements.filter((element) => element.id !== selectedId);
+    clearSelection();
+    render();
+  }
+
+  function duplicateSelected() {
+    if (editorMode === "html") {
+      duplicateDirectSelected();
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element) return;
+
+    pushHistory();
+    const copy = clone(element);
+    copy.id = uniqueDeckElementId(`${element.id}-copy`);
+    copy.x = Math.round(copy.x + 18);
+    copy.y = Math.round(copy.y + 18);
+    copy.z = Math.max(...currentSlide().elements.map((item) => item.z), 0) + 1;
+    currentSlide().elements.push(copy);
+    selectedId = copy.id;
+    render();
+    postSelectionChanged({ immediate: true });
+  }
+
+  function uniqueDeckElementId(base) {
+    const ids = new Set(currentSlide().elements.map((element) => element.id));
+    let id = base;
+    let index = 2;
+    while (ids.has(id)) {
+      id = `${base}-${index}`;
+      index += 1;
+    }
+    return id;
+  }
+
+  function arrangeSelected(mode) {
+    if (editorMode === "html") {
+      arrangeDirectSelected(mode);
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element) return;
+
+    pushHistory();
+    const elements = currentSlide().elements;
+    const zValues = elements.map((item) => item.z);
+    const minZ = Math.min(...zValues);
+    const maxZ = Math.max(...zValues);
+
+    if (mode === "front") element.z = maxZ + 1;
+    if (mode === "back") element.z = minZ - 1;
+    if (mode === "forward") element.z += 1;
+    if (mode === "backward") element.z -= 1;
+
+    normalizeZ();
+    render();
+    postSelectionChanged();
+  }
+
+  function normalizeZ() {
+    const sorted = [...currentSlide().elements].sort((a, b) => a.z - b.z);
+    sorted.forEach((element, index) => {
+      element.z = index + 1;
+    });
+  }
+
+  function toggleLock() {
+    const element = selectedElement();
+    if (!element) return;
+
+    pushHistory();
+    element.locked = !element.locked;
+    render();
+    postSelectionChanged();
+  }
+
+  function alignSelected(edge) {
+    if (editorMode === "html") {
+      alignDirectSelected(edge);
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element || element.locked) return;
+
+    pushHistory();
+    const canvas = deck.canvas;
+    if (edge === "left") element.x = 0;
+    if (edge === "center") element.x = Math.round((canvas.width - element.w) / 2);
+    if (edge === "right") element.x = Math.round(canvas.width - element.w);
+    if (edge === "top") element.y = 0;
+    if (edge === "middle") element.y = Math.round((canvas.height - element.h) / 2);
+    if (edge === "bottom") element.y = Math.round(canvas.height - element.h);
+    render();
+    postSelectionChanged();
+  }
+
+  function fitSelected(mode) {
+    if (editorMode === "html") {
+      fitDirectSelected(mode);
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element || element.locked) return;
+
+    pushHistory();
+    const canvas = deck.canvas;
+    if (mode === "width" || mode === "page") {
+      element.x = 0;
+      element.w = canvas.width;
+    }
+    if (mode === "height" || mode === "page") {
+      element.y = 0;
+      element.h = canvas.height;
+    }
+    render();
+    postSelectionChanged();
+  }
+
+  function snapSelectedToGrid(grid = 8) {
+    if (editorMode === "html") {
+      snapDirectSelectedToGrid(grid);
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element || element.locked) return;
+    pushHistory();
+    element.x = snapNumber(element.x, grid);
+    element.y = snapNumber(element.y, grid);
+    element.w = Math.max(MIN_SIZE, snapNumber(element.w, grid));
+    element.h = Math.max(MIN_SIZE, snapNumber(element.h, grid));
+    render();
+    postSelectionChanged();
+  }
+
+  function snapNumber(value, grid) {
+    return Math.round(value / grid) * grid;
+  }
+
+  function nudgeSelected(dx, dy) {
+    if (editorMode === "html") {
+      const nodes = directSelectionNodes();
+      if (!nodes.length) return;
+      pushHistory();
+      for (const node of nodes) {
+        const rect = directNodeRect(node);
+        rect.x += dx;
+        rect.y += dy;
+        applyDirectRect(node, rect);
+      }
+      updateSelectionBox();
+      postSelectionChanged();
+      return;
+    }
+
+    const element = selectedElement();
+    if (!element || element.locked) return;
+    pushHistory();
+    element.x = Math.round(element.x + dx);
+    element.y = Math.round(element.y + dy);
+    render();
+    postSelectionChanged();
+  }
+
+  function directSelectedElement() {
+    if (activeGesture?.mode === "html" && activeGesture.selectionPayloadBase && activeGesture.lastRect) {
+      return {
+        ...activeGesture.selectionPayloadBase,
+        x: activeGesture.lastRect.x,
+        y: activeGesture.lastRect.y,
+        w: activeGesture.lastRect.w,
+        h: activeGesture.lastRect.h
+      };
+    }
+
+    const nodes = directSelectionNodes();
+    if (nodes.length > 1) {
+      const rect = directNodesBounds(nodes);
+      return directSelectionPayloadBase(nodes, rect);
+    }
+
+    if (!directSelectedNode || !directSelectedNode.isConnected) return null;
+
+    const rect = directNodeRect(directSelectedNode);
+    return directElementPayloadForNode(directSelectedNode, rect);
+  }
+
+  function directSelectionPayloadBase(nodes, rect) {
+    if (nodes.length > 1) {
+      return {
+        id: "chiselo-selection-group",
+        type: "html-group",
+        tagName: "group",
+        htmlPath: `已选中 ${nodes.length} 个对象`,
+        layoutMode: directLayoutMode,
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        rotation: 0,
+        z: 0,
+        text: `已选中 ${nodes.length} 个对象`,
+        style: null
+      };
+    }
+
+    const node = nodes[0];
+    if (!node || !node.isConnected) return null;
+    return directElementPayloadForNode(node, rect || directNodeRect(node));
+  }
+
+  function directElementPayloadForNode(node, rect) {
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    return {
+      id: ensureDirectId(node),
+      type: "html",
+      tagName: node.tagName.toLowerCase(),
+      htmlPath: directNodePath(node),
+      layoutMode: directLayoutMode,
+      imageSource: node.matches?.("img") ? (node.currentSrc || node.getAttribute("src") || "") : null,
+      imageAlt: node.matches?.("img") ? (node.getAttribute("alt") || "") : null,
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h,
+      rotation: rotationFromTransform(style.transform),
+      z: parseFloat(style.zIndex) || 0,
+      text: normalizedText(node),
+      style: {
+        fontFamily: style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize: parseFloat(style.fontSize) || 16,
+        fontWeight: fontWeightNumber(style.fontWeight),
+        lineHeight: style.lineHeight === "normal" ? 1.2 : Math.max(0.8, (parseFloat(style.lineHeight) || 19.2) / (parseFloat(style.fontSize) || 16)),
+        color: style.color || "#111827",
+        fill: isTransparent(style.backgroundColor) ? "transparent" : style.backgroundColor,
+        stroke: firstBorderColor(style),
+        strokeWidth: firstBorderWidth(style),
+        radius: parseFloat(style.borderTopLeftRadius) || 0,
+        textAlign: textAlignValue(style.textAlign)
+      }
+    };
+  }
+
+  function updateDirectSelectionBox() {
+    const nodes = directSelectionNodes();
+    if (!nodes.length) {
+      selectionBox.hidden = true;
+      selectionBox.innerHTML = "";
+      delete selectionBox.dataset.directSignature;
+      return;
+    }
+
+    const rect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(nodes[0]);
+    const signature = nodes.map((node) => node.dataset.chiseloId || ensureDirectId(node)).join("|");
+    const shouldRebuildChrome = selectionBox.dataset.directSignature !== signature;
+    selectionBox.hidden = false;
+    selectionBox.classList.remove("is-locked");
+    selectionBox.classList.toggle("is-group", nodes.length > 1);
+    selectionBox.style.left = `${rect.x}px`;
+    selectionBox.style.top = `${rect.y}px`;
+    selectionBox.style.width = `${rect.w}px`;
+    selectionBox.style.height = `${rect.h}px`;
+    selectionBox.style.transform = "none";
+
+    if (!shouldRebuildChrome) {
+      if (activeGesture?.mode === "html") return;
+      const chip = selectionBox.querySelector(".quick-chip");
+      if (chip) chip.textContent = directQuickLabel(nodes, rect);
+      const bar = selectionBox.querySelector(".quick-action-bar");
+      if (bar) {
+        bar.className = `quick-action-bar${rect.y < 42 ? " is-below" : ""}`;
+        requestAnimationFrame(() => clampDirectQuickActions(bar, rect));
+      }
+      return;
+    }
+
+    selectionBox.dataset.directSignature = signature;
+    selectionBox.innerHTML = "";
+
+    for (const handle of handles) {
+      const grip = document.createElement("div");
+      grip.className = "resize-handle";
+      grip.dataset.handle = handle;
+      grip.addEventListener("pointerdown", (event) => beginResize(event, handle));
+      selectionBox.appendChild(grip);
+    }
+
+    appendDirectQuickActions(nodes, rect);
+  }
+
+  async function openHTMLFromBase64(base64, baseHref = "") {
+    const html = decodeBase64(base64);
+    await loadDirectHTML(html, baseHref);
+  }
+
+  async function loadDirectHTML(html, baseHref = "", options = {}) {
+    const normalized = normalizeDirectHTMLSource(html);
+    editorMode = "html";
+    if (options.resetView !== false) resetZoom();
+    directHadDoctype = normalized.hadDoctype;
+    directBaseHref = baseHref || directBaseHref || "";
+    lastHTMLTreeSignature = "";
+    lastHTMLDiagnosticsSignature = "";
+    directMutationRefreshPending = false;
+    directTreeRefreshPending = false;
+    activeDirectTextEditNode = null;
+    pendingDirectTextEditNode = null;
+    if (!options.preserveDirty) clearDirty();
+    resetHistoryCoalescing();
+    directSelectedNode = null;
+    directSelectedNodes = [];
+    selectedId = null;
+    layer.innerHTML = "";
+    hideGuides();
+
+    if (directFrame) directFrame.remove();
+    hoverBox.hidden = true;
+    directFrame = document.createElement("iframe");
+    directFrame.className = "html-frame";
+    directFrame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
+    surface.innerHTML = "";
+    surface.appendChild(directFrame);
+
+    directFrame.srcdoc = withBaseElement(normalized.html, directBaseHref);
+    await waitForFrame(directFrame);
+    setupDirectDocument();
+    renderDirectHTML({ preserveScale: options.resetView === false });
+    postHTMLTreeChanged();
+    postSelectionChanged();
+  }
+
+  function normalizeDirectHTMLSource(input) {
+    let html = String(input || "");
+    const hadDoctype = /^\s*<!doctype/i.test(html);
+    const hasHTML = /<html[\s>]/i.test(html);
+    const hasHead = /<head[\s>]/i.test(html);
+    const hasBody = /<body[\s>]/i.test(html);
+
+    if (!hasHTML) {
+      const head = hasHead ? "" : "<head><meta charset=\"utf-8\"></head>";
+      const body = hasBody ? html : `<body>${html}</body>`;
+      return { html: `<html>${head}${body}</html>`, hadDoctype };
+    }
+
+    if (!hasHead) {
+      html = html.replace(/<html([^>]*)>/i, "<html$1><head><meta charset=\"utf-8\"></head>");
+    }
+
+    if (!hasBody) {
+      html = html.replace(/<\/head>/i, "</head><body>");
+      html = html.replace(/<\/html>\s*$/i, "</body></html>");
+    }
+
+    return { html, hadDoctype };
+  }
+
+  function waitForFrame(frame) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        setTimeout(resolve, 120);
+      };
+      frame.addEventListener("load", finish, { once: true });
+      setTimeout(finish, 700);
+    });
+  }
+
+  function setupDirectDocument() {
+    const doc = directFrame.contentDocument;
+    if (!doc) return;
+    const win = doc.defaultView;
+
+    const style = doc.createElement("style");
+    style.setAttribute("data-chiselo-style", "");
+    style.textContent = `
+      [data-chiselo-id] { cursor: grab; }
+      [data-chiselo-id]:active { cursor: grabbing; }
+      img[data-chiselo-id], [data-chiselo-id] img { cursor: grab; }
+      [contenteditable="true"] {
+        outline: 2px solid #1769ff !important;
+        outline-offset: 2px !important;
+        cursor: text !important;
+        -webkit-user-select: text !important;
+        user-select: text !important;
+      }
+      strong[contenteditable="true"],
+      em[contenteditable="true"],
+      b[contenteditable="true"],
+      i[contenteditable="true"],
+      u[contenteditable="true"],
+      small[contenteditable="true"],
+      code[contenteditable="true"],
+      mark[contenteditable="true"],
+      time[contenteditable="true"],
+      sub[contenteditable="true"],
+      sup[contenteditable="true"] {
+        display: inline-block !important;
+        min-width: 1ch !important;
+      }
+    `;
+    doc.head?.appendChild(style);
+
+    for (const node of doc.querySelectorAll("*")) {
+      ensureDirectId(node);
+    }
+    setupDirectResourceTracking(doc);
+    normalizeDirectTablesForEditing(doc);
+
+    doc.addEventListener("click", (event) => {
+      const link = event.target.closest?.("a");
+      if (link) event.preventDefault();
+    }, true);
+
+    doc.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      const node = directSelectionTargetFromEvent(event);
+      if (!node) return;
+      if (event.shiftKey || event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleDirectSelection(node);
+        return;
+      }
+      if (event.target.closest?.("[contenteditable='true']")) return;
+
+      if (event.detail >= 2) {
+        const textNode = directTextEditTargetFromEvent(event);
+        if (textNode) {
+          event.preventDefault();
+          event.stopPropagation();
+          scheduleDirectTextEdit(textNode);
+          return;
+        }
+      }
+
+      beginDirectDrag(event, node);
+    }, true);
+
+    doc.addEventListener("mousemove", (event) => {
+      if (activeGesture) {
+        cancelDirectHover();
+        return;
+      }
+      const node = directSelectionTargetFromEvent(event);
+      if (!node || isDirectSelected(node)) {
+        cancelDirectHover();
+        return;
+      }
+      scheduleDirectHover(node);
+    }, true);
+
+    doc.addEventListener("mouseleave", () => {
+      cancelDirectHover();
+    });
+
+    doc.addEventListener("dblclick", (event) => {
+      if (pendingDirectTextEditNode) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.target.closest?.("[contenteditable='true']")) return;
+      const node = directTextEditTargetFromEvent(event);
+      if (!node) return;
+      event.preventDefault();
+      event.stopPropagation();
+      scheduleDirectTextEdit(node);
+    }, true);
+
+    doc.addEventListener("keydown", handleEditorKeydown);
+    doc.addEventListener("wheel", handleViewportWheel, { passive: false });
+
+    win.addEventListener("scroll", () => {
+      scheduleSelectionBoxUpdate();
+    });
+
+    win.addEventListener("resize", () => {
+      scheduleSelectionBoxUpdate();
+    });
+
+    const observer = new MutationObserver((mutations) => {
+      const affectsTree = mutationsAffectHTMLTree(mutations);
+      if (activeGesture?.mode === "html") {
+        directMutationRefreshPending = true;
+        if (affectsTree) directTreeRefreshPending = true;
+        return;
+      }
+      if (activeDirectTextEditNode?.isConnected) {
+        scheduleDirectLayoutRefresh();
+        if (affectsTree) directTreeRefreshPending = true;
+        return;
+      }
+      scheduleDirectLayoutRefresh();
+      if (affectsTree) scheduleHTMLTreeChanged();
+    });
+    observer.observe(doc.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  }
+
+  function directEditableTarget(target) {
+    if (!target || target.nodeType !== Node.ELEMENT_NODE) return null;
+    const doc = target.ownerDocument;
+    if (target === doc.documentElement) return doc.body;
+    return target.closest("body *") || doc.body;
+  }
+
+  function directSelectionTargetFromEvent(event) {
+    const targetNode = directEditableTarget(event.target);
+    if (!targetNode) return null;
+
+    if (!shouldResolveSelectionTargetFromPoint(targetNode)) {
+      return targetNode;
+    }
+
+    return directSelectableElementAtPoint(event, targetNode) || targetNode;
+  }
+
+  function shouldResolveSelectionTargetFromPoint(node) {
+    if (!node || !node.matches) return true;
+    if (node.matches("html,body")) return true;
+    if (isDecorativeDirectNode(node)) return true;
+
+    const rect = node.getBoundingClientRect();
+    const canvas = directCanvas();
+    const coversMostCanvas = rect.width > canvas.width * 0.72 && rect.height > canvas.height * 0.28;
+    return coversMostCanvas && !normalizedText(node);
+  }
+
+  function directSelectableElementAtPoint(event, fallbackNode = null) {
+    const doc = event.target?.ownerDocument || directFrame?.contentDocument;
+    if (!doc) return null;
+
+    const elements = doc.elementsFromPoint?.(event.clientX, event.clientY) || [];
+    const candidates = uniqueElements(elements.map((node) => directEditableTarget(node)));
+    const fallback = fallbackNode && fallbackNode !== doc.body ? fallbackNode : null;
+
+    const meaningful = candidates
+      .filter((node) => node && node !== doc.body && isDirectNodeVisible(node) && !isDecorativeDirectNode(node))
+      .sort((a, b) => directSelectionScore(a) - directSelectionScore(b));
+
+    return meaningful[0] || fallback;
+  }
+
+  function directSelectionScore(node) {
+    const tag = node.tagName.toLowerCase();
+    const rect = node.getBoundingClientRect();
+    const area = rect.width * rect.height;
+    const semanticBonus = node.matches?.("td,th,p,h1,h2,h3,h4,h5,h6,li,img,table,button,a") ? -120000 : 0;
+    const textBonus = normalizedText(node) ? -60000 : 0;
+    const depthBonus = -directTextEditDepth(node) * 1200;
+    return area + semanticBonus + textBonus + depthBonus;
+  }
+
+  function isDecorativeDirectNode(node) {
+    if (!node || !node.matches) return false;
+    if (node.hasAttribute("data-chiselo-style")) return true;
+    if (node.getAttribute("aria-hidden") === "true" && !normalizedText(node)) return true;
+
+    const tag = node.tagName.toLowerCase();
+    const svg = node.closest?.("svg");
+    if (svg) {
+      const svgClass = typeof svg.className === "object" ? svg.className.baseVal : String(svg.className || "");
+      const nodeClass = typeof node.className === "object" ? node.className.baseVal : String(node.className || "");
+      const names = `${svg.id || ""} ${svgClass} ${node.id || ""} ${nodeClass}`.toLowerCase();
+      const graphicOnly = !normalizedText(svg);
+      const explicitDecor = /watermark|decor|decoration|background|bg|ornament|cap|hero-cap/.test(names);
+      if (explicitDecor || graphicOnly || ["path", "line", "circle", "rect", "ellipse", "polygon", "polyline", "g", "defs", "use"].includes(tag)) {
+        return true;
+      }
+    }
+
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    return style.pointerEvents === "none" || style.visibility === "hidden" || style.display === "none";
+  }
+
+  function directTextEditTarget(target) {
+    return directTextEditTargetFromNode(directEditableTarget(target));
+  }
+
+  function directTextEditTargetFromEvent(event) {
+    const targetNode = directEditableTarget(event.target);
+    if (isDirectNonTextMediaTarget(targetNode)) return null;
+
+    const eventTarget = directTextEditTargetFromNode(targetNode);
+    if (eventTarget && !shouldResolveTextTargetFromPoint(targetNode)) return eventTarget;
+
+    const caretNode = directTextElementAtPoint(event);
+    const caretTarget = directTextEditTargetFromNode(caretNode);
+
+    if (caretTarget && !shouldResolveTextTargetFromPoint(caretNode)) return caretTarget;
+
+    const pointTarget = nearestDirectTextEditTargetAtPoint(event, targetNode);
+    if (pointTarget) return pointTarget;
+
+    if (caretTarget) return caretTarget;
+    return eventTarget || directTextEditTarget(event.target);
+  }
+
+  function shouldResolveTextTargetFromPoint(node) {
+    if (!node || !node.matches) return true;
+    if (node.matches(`${DIRECT_TEXT_BLOCK_SELECTOR},${DIRECT_SAFE_INLINE_SELECTOR},${DIRECT_FORMATTING_INLINE_SELECTOR}`)) return false;
+    return node.matches("div,section,article,header,footer,aside,body");
+  }
+
+  function directTextElementAtPoint(event) {
+    const doc = event.target?.ownerDocument || directFrame?.contentDocument;
+    if (!doc) return null;
+
+    const range = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
+    let node = range?.startContainer || null;
+
+    if (!node && doc.caretPositionFromPoint) {
+      node = doc.caretPositionFromPoint(event.clientX, event.clientY)?.offsetNode || null;
+    }
+
+    if (node?.nodeType === Node.TEXT_NODE && normalizedText(node.parentElement).length > 0) {
+      return node.parentElement;
+    }
+
+    return node?.nodeType === Node.ELEMENT_NODE ? node : null;
+  }
+
+  function nearestDirectTextEditTargetAtPoint(event, targetNode) {
+    const doc = event.target?.ownerDocument || directFrame?.contentDocument;
+    if (!doc) return null;
+
+    const x = event.clientX;
+    const y = event.clientY;
+    const pointElements = doc.elementsFromPoint?.(x, y) || [];
+    const roots = uniqueElements([
+      targetNode,
+      ...pointElements,
+      ...pointElements.map((node) => node.closest?.("section,article,header,footer,aside,main,div,td,th")).filter(Boolean)
+    ]);
+
+    const candidates = [];
+    for (const root of roots) {
+      collectDirectTextCandidates(root, candidates);
+    }
+
+    const scored = uniqueElements(candidates)
+      .filter((node) => isDirectNodeVisible(node) && directNodeAllowsTextEdit(node) && shouldEditNodeDirectly(node))
+      .map((node) => {
+        const rect = node.getBoundingClientRect();
+        const distance = distanceToRect(x, y, rect);
+        const inside = distance === 0;
+        const depthBonus = Math.min(directTextEditDepth(node), 12) * 0.35;
+        const areaPenalty = Math.min(rect.width * rect.height, 120000) / 120000;
+        const maxDistance = inside ? 0 : Math.max(28, Math.min(88, Math.max(rect.height * 1.4, 34)));
+        return {
+          node,
+          distance,
+          score: distance - depthBonus + areaPenalty,
+          allowed: inside || distance <= maxDistance
+        };
+      })
+      .filter((item) => item.allowed)
+      .sort((a, b) => a.score - b.score);
+
+    return scored[0]?.node || null;
+  }
+
+  function collectDirectTextCandidates(root, output) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+
+    const direct = directTextEditTargetFromNode(root);
+    if (direct) output.push(direct);
+
+    const searchRoot = root.matches?.("body") ? root : root.closest?.("body *") || root;
+    for (const node of searchRoot.querySelectorAll?.(DIRECT_TEXT_SELECTOR) || []) {
+      const candidate = directTextEditTargetFromNode(node);
+      if (candidate) output.push(candidate);
+    }
+  }
+
+  function uniqueElements(nodes) {
+    const unique = [];
+    const seen = new Set();
+    for (const node of nodes) {
+      if (!node || node.nodeType !== Node.ELEMENT_NODE || seen.has(node)) continue;
+      seen.add(node);
+      unique.push(node);
+    }
+    return unique;
+  }
+
+  function distanceToRect(x, y, rect) {
+    const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+    const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+    return Math.hypot(dx, dy);
+  }
+
+  function directTextEditTargetFromNode(node) {
+    if (!node) return null;
+
+    const blockParent = node.closest?.(DIRECT_TEXT_BLOCK_SELECTOR);
+    if (blockParent && directNodeAllowsTextEdit(blockParent)) return blockParent;
+
+    if (node.matches?.(DIRECT_FORMATTING_INLINE_SELECTOR) && directNodeAllowsTextEdit(node)) return node;
+
+    const inlineParent = node.closest?.(DIRECT_SAFE_INLINE_SELECTOR);
+    if (inlineParent && directNodeAllowsTextEdit(inlineParent)) return inlineParent;
+
+    if (directNodeAllowsTextEdit(node) && shouldEditNodeDirectly(node)) return node;
+
+    const childCandidate = deepestVisibleTextChild(node);
+    if (childCandidate) return childCandidate;
+
+    const textCandidate = node.closest?.(DIRECT_TEXT_SELECTOR);
+    if (textCandidate && directNodeAllowsTextEdit(textCandidate)) {
+      if (shouldEditNodeDirectly(textCandidate)) return textCandidate;
+      return deepestVisibleTextChild(textCandidate);
+    }
+
+    return directNodeAllowsTextEdit(node) && shouldEditNodeDirectly(node) ? node : null;
+  }
+
+  function shouldEditNodeDirectly(node) {
+    if (!node || !directNodeAllowsTextEdit(node)) return false;
+    const tag = node.tagName.toLowerCase();
+    if (node.matches?.(`${DIRECT_TEXT_BLOCK_SELECTOR},${DIRECT_TEXT_INLINE_SELECTOR}`)) return true;
+    if (hasMeaningfulDirectText(node)) return true;
+    if (hasMixedMediaChildren(node)) return false;
+
+    const visibleTextChildren = [...node.children].filter((child) => isDirectNodeVisible(child) && directNodeAllowsTextEdit(child));
+    return ["div", "section", "article", "header", "footer", "aside"].includes(tag) && visibleTextChildren.length <= 1;
+  }
+
+  function hasMixedMediaChildren(node) {
+    return Boolean(node?.querySelector?.("img,picture,svg,canvas,video,audio,iframe,table"));
+  }
+
+  function deepestVisibleTextChild(node) {
+    const candidates = [...node.querySelectorAll(DIRECT_TEXT_SELECTOR)]
+      .filter((child) => isDirectNodeVisible(child) && directNodeAllowsTextEdit(child));
+
+    if (!candidates.length) return null;
+    return candidates
+      .sort((a, b) => directTextEditDepth(b) - directTextEditDepth(a))
+      .find((child) => shouldEditNodeDirectly(child)) || candidates[0];
+  }
+
+  function directTextEditDepth(node) {
+    let depth = 0;
+    let current = node;
+    while (current?.parentElement) {
+      depth += 1;
+      current = current.parentElement;
+    }
+    return depth;
+  }
+
+  function hasMeaningfulDirectText(node) {
+    return [...node.childNodes].some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0);
+  }
+
+  function ensureDirectId(node) {
+    if (!node.dataset.chiseloId) {
+      node.dataset.chiseloId = `html-${Math.random().toString(36).slice(2, 9)}`;
+    }
+    return node.dataset.chiseloId;
+  }
+
+  function directNodePath(node) {
+    const doc = node.ownerDocument;
+    const parts = [];
+    let current = node;
+
+    while (current && current.nodeType === Node.ELEMENT_NODE && current !== doc.documentElement) {
+      const tag = current.tagName.toLowerCase();
+      const id = current.id ? `#${current.id}` : "";
+      const className = [...current.classList || []]
+        .filter((name) => !name.startsWith("chiselo"))
+        .slice(0, 2)
+        .map((name) => `.${name}`)
+        .join("");
+      const siblingIndex = elementSiblingIndex(current);
+      parts.unshift(`${tag}${id}${className}${siblingIndex > 1 ? `:nth-of-type(${siblingIndex})` : ""}`);
+      current = current.parentElement;
+    }
+
+    return parts.join(" > ");
+  }
+
+  function buildHTMLTree() {
+    const doc = directFrame?.contentDocument;
+    if (!doc?.body) return [];
+
+    const budget = { remaining: MAX_HTML_TREE_NODES };
+    htmlTreeTextCache = new WeakMap();
+    try {
+      const roots = visibleTreeChildren(doc.body).slice(0, 18);
+      return roots.map((node) => htmlTreeNode(node, 0, budget)).filter(Boolean);
+    } finally {
+      htmlTreeTextCache = null;
+    }
+  }
+
+  function htmlTreeNode(node, depth, budget) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+    if (budget.remaining <= 0) return null;
+    budget.remaining -= 1;
+
+    const children = [];
+    if (depth < 6 && budget.remaining > 0) {
+      const childLimit = depth === 0 ? 14 : 10;
+      for (const child of visibleTreeChildren(node)) {
+        if (children.length >= childLimit || budget.remaining <= 0) break;
+        const childNode = htmlTreeNode(child, depth + 1, budget);
+        if (childNode) children.push(childNode);
+      }
+    }
+
+    return {
+      id: ensureDirectId(node),
+      label: htmlTreeLabel(node),
+      path: directNodePath(node),
+      tagName: node.tagName.toLowerCase(),
+      children: children.length ? children : null
+    };
+  }
+
+  function visibleTreeChildren(node) {
+    return [...node.children].filter((child) => {
+      const tag = child.tagName.toLowerCase();
+      if (["script", "style", "meta", "link", "base", "title", "noscript"].includes(tag)) return false;
+      if (child.hasAttribute("data-chiselo-style")) return false;
+
+      const style = child.ownerDocument.defaultView.getComputedStyle(child);
+      const rect = child.getBoundingClientRect();
+      const hasText = htmlTreeText(child).length > 0;
+      return isVisibleStyle(style) && (rect.width > 3 || rect.height > 3 || hasText);
+    });
+  }
+
+  function htmlTreeLabel(node) {
+    const id = node.id ? `#${node.id}` : "";
+    const className = [...node.classList || []]
+      .slice(0, 2)
+      .map((name) => `.${name}`)
+      .join("");
+    const text = htmlTreeText(node).slice(0, 42);
+    return `${id}${className}${text ? ` ${text}` : ""}`.trim() || node.tagName.toLowerCase();
+  }
+
+  function htmlTreeText(node) {
+    if (!htmlTreeTextCache) return normalizedText(node);
+    if (!htmlTreeTextCache.has(node)) {
+      htmlTreeTextCache.set(node, normalizedText(node));
+    }
+    return htmlTreeTextCache.get(node);
+  }
+
+  function elementSiblingIndex(node) {
+    let index = 1;
+    let sibling = node.previousElementSibling;
+    while (sibling) {
+      if (sibling.tagName === node.tagName) index += 1;
+      sibling = sibling.previousElementSibling;
+    }
+    return index;
+  }
+
+  function selectDirectNode(node) {
+    setDirectSelection([node], node);
+  }
+
+  function setDirectSelection(nodes, activeNode = null) {
+    const uniqueNodes = [];
+    const seen = new Set();
+
+    for (const node of nodes || []) {
+      if (!node || !node.isConnected || node.nodeType !== Node.ELEMENT_NODE) continue;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      uniqueNodes.push(node);
+      ensureDirectId(node);
+    }
+
+    const nextActiveNode = activeNode && uniqueNodes.includes(activeNode) ? activeNode : uniqueNodes[uniqueNodes.length - 1] || uniqueNodes[0] || null;
+    if (directSelectionMatches(uniqueNodes, nextActiveNode)) return;
+
+    directSelectedNodes = uniqueNodes;
+    directSelectedNode = nextActiveNode;
+    hoverBox.hidden = true;
+    selectedId = directSelectedNode ? ensureDirectId(directSelectedNode) : null;
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function directSelectionMatches(nodes, activeNode) {
+    if (directSelectedNode !== activeNode) return false;
+    if (directSelectedNodes.length !== nodes.length) return false;
+    return nodes.every((node, index) => directSelectedNodes[index] === node);
+  }
+
+  function directHistoryCoalesceKey(prefix, nodes) {
+    return `${prefix}:${(nodes || []).map((node) => ensureDirectId(node)).join("|")}`;
+  }
+
+  function directSelectionNodes() {
+    directSelectedNodes = directSelectedNodes.filter((node) => node?.isConnected);
+
+    if (directSelectedNode?.isConnected && !directSelectedNodes.includes(directSelectedNode)) {
+      directSelectedNodes = [directSelectedNode];
+    }
+
+    if (!directSelectedNodes.length) {
+      directSelectedNode = null;
+      selectedId = null;
+    } else if (!directSelectedNode || !directSelectedNode.isConnected || !directSelectedNodes.includes(directSelectedNode)) {
+      directSelectedNode = directSelectedNodes[directSelectedNodes.length - 1];
+      selectedId = ensureDirectId(directSelectedNode);
+    }
+
+    return directSelectedNodes;
+  }
+
+  function isDirectSelected(node) {
+    return directSelectionNodes().includes(node);
+  }
+
+  function toggleDirectSelection(node) {
+    const nodes = directSelectionNodes();
+    if (nodes.includes(node)) {
+      setDirectSelection(nodes.filter((item) => item !== node));
+      return;
+    }
+
+    setDirectSelection([...nodes, node], node);
+  }
+
+  function selectDirectVisibleChildren() {
+    if (editorMode !== "html" || !directSelectedNode) return;
+    const children = visibleTreeChildren(directSelectedNode).filter((node) => isDirectNodeVisible(node));
+    if (children.length) setDirectSelection(children, children[children.length - 1]);
+  }
+
+  function selectDirectSameClass() {
+    if (editorMode !== "html" || !directSelectedNode) return;
+    const doc = directSelectedNode.ownerDocument;
+    const className = [...directSelectedNode.classList || []].find((name) => !name.startsWith("chiselo"));
+    const parent = directSelectedNode.parentElement;
+    const selector = className ? `.${cssEscape(className)}` : directSelectedNode.tagName.toLowerCase();
+    const scope = parent && parent !== doc.documentElement ? parent : doc.body;
+    const nodes = [...scope.querySelectorAll(selector)].filter((node) => isDirectNodeVisible(node));
+    if (nodes.length > 1) setDirectSelection(nodes, directSelectedNode);
+  }
+
+  function updateHoverBox(node) {
+    if (!node || !node.isConnected) {
+      hoverBox.hidden = true;
+      return;
+    }
+
+    const rect = directNodeRect(node);
+    if (rect.w < 3 || rect.h < 3) {
+      hoverBox.hidden = true;
+      return;
+    }
+
+    hoverBox.hidden = false;
+    hoverBox.style.left = `${rect.x}px`;
+    hoverBox.style.top = `${rect.y}px`;
+    hoverBox.style.width = `${rect.w}px`;
+    hoverBox.style.height = `${rect.h}px`;
+    hoverBox.innerHTML = `<div class="hover-label">${escapeHTML(directHoverLabel(node, rect))}</div>`;
+  }
+
+  function scheduleDirectHover(node) {
+    pendingDirectHoverNode = node;
+    if (directHoverFrame) return;
+
+    directHoverFrame = requestAnimationFrame(() => {
+      directHoverFrame = 0;
+      const nextNode = pendingDirectHoverNode;
+      pendingDirectHoverNode = null;
+
+      if (!nextNode || isDirectSelected(nextNode)) {
+        hoverBox.hidden = true;
+        return;
+      }
+
+      updateHoverBox(nextNode);
+    });
+  }
+
+  function cancelDirectHover() {
+    pendingDirectHoverNode = null;
+    if (directHoverFrame) {
+      cancelAnimationFrame(directHoverFrame);
+      directHoverFrame = 0;
+    }
+    hoverBox.hidden = true;
+  }
+
+  function directHoverLabel(node, rect) {
+    const tag = node.tagName.toLowerCase();
+    const size = `${Math.round(rect.w)} x ${Math.round(rect.h)}`;
+    const resource = directResourceStatus(node);
+    if (isImageLikeNode(node)) return `IMG ${size}${resource ? ` - ${resource}` : ""} - drag, resize, replace`;
+    if (node.closest?.("td, th")) return `CELL ${size} - click, drag, edit table`;
+    if (node.matches?.("table")) return `TABLE ${size} - click, drag, edit rows/cols`;
+    if (normalizedText(node)) return `${tag.toUpperCase()} ${size} - double-click text`;
+    return `${tag.toUpperCase()} ${size} - click, drag, resize`;
+  }
+
+  function appendDirectQuickActions(nodes, rect) {
+    const bar = document.createElement("div");
+    bar.className = `quick-action-bar${rect.y < 42 ? " is-below" : ""}`;
+    bar.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    const chip = document.createElement("span");
+    chip.className = "quick-chip";
+    chip.textContent = directQuickLabel(nodes, rect);
+    bar.appendChild(chip);
+
+    const actions = directQuickActions(nodes);
+    for (const item of actions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `quick-action${item.primary ? " is-primary" : ""}${item.danger ? " is-danger" : ""}`;
+      button.textContent = item.label;
+      button.title = item.title;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        runDirectQuickAction(item.action);
+      });
+      bar.appendChild(button);
+    }
+
+    selectionBox.appendChild(bar);
+    requestAnimationFrame(() => clampDirectQuickActions(bar, rect));
+  }
+
+  function clampDirectQuickActions(bar, rect) {
+    if (!bar.isConnected) return;
+    const canvas = directCanvas();
+    const width = bar.offsetWidth / Math.max(scale, 0.05);
+    let left = 0;
+    if (rect.x + width > canvas.width - 8) {
+      left = Math.max(8 - rect.x, canvas.width - 8 - rect.x - width);
+    }
+    bar.style.left = `${Math.round(left)}px`;
+  }
+
+  function directQuickLabel(nodes, rect) {
+    if (nodes.length > 1) return `${nodes.length} items ${Math.round(rect.w)} x ${Math.round(rect.h)}`;
+    const node = nodes[0];
+    if (!node) return "Selection";
+    const tag = node.tagName.toLowerCase();
+    const id = node.id ? `#${node.id}` : "";
+    const className = [...node.classList || []]
+      .filter((name) => !name.startsWith("chiselo"))
+      .slice(0, 1)
+      .map((name) => `.${name}`)
+      .join("");
+    return `${tag}${id}${className} ${Math.round(rect.w)} x ${Math.round(rect.h)}`;
+  }
+
+  function directQuickActions(nodes) {
+    const actions = [];
+    const single = nodes.length === 1 ? nodes[0] : null;
+    const tableContext = directTableContext();
+
+    if (single && directNodeAllowsTextEdit(single)) {
+      actions.push({ action: "editText", label: "文字", title: "编辑文字", primary: true });
+    }
+
+    if (single && isImageLikeNode(single)) {
+      actions.push({ action: "replaceImage", label: "替换", title: "替换图片", primary: true });
+      actions.push({ action: "imageContain", label: "适应", title: "完整显示图片" });
+      actions.push({ action: "imageCover", label: "填充", title: "填满图片框" });
+    }
+
+    if (tableContext?.table) {
+      actions.push({ action: "addRow", label: "+行", title: "在选区后添加表格行" });
+      actions.push({ action: "addColumn", label: "+列", title: "在选区后添加表格列" });
+    }
+
+    actions.push(
+      { action: "duplicate", label: "复制", title: "复制选中对象" },
+      { action: "fitWidth", label: "等宽", title: "适配页面宽度" },
+      { action: "front", label: "置顶", title: "置于顶层" },
+      { action: "back", label: "置底", title: "置于底层" },
+      { action: "delete", label: "删除", title: "删除选中对象", danger: true }
+    );
+
+    return actions;
+  }
+
+  function runDirectQuickAction(action) {
+    switch (action) {
+      case "editText":
+        if (directSelectedNode) beginDirectTextEdit(directSelectedNode);
+        return;
+      case "replaceImage":
+        postMessage("requestReplaceImage");
+        return;
+      case "imageContain":
+        styleSelectedImage({ objectFit: "contain" });
+        return;
+      case "imageCover":
+        styleSelectedImage({ objectFit: "cover" });
+        return;
+      case "addRow":
+        tableAddRowAfter();
+        return;
+      case "addColumn":
+        tableAddColumnAfter();
+        return;
+      case "duplicate":
+        duplicateSelected();
+        return;
+      case "fitWidth":
+        fitSelected("width");
+        return;
+      case "front":
+        arrangeSelected("front");
+        return;
+      case "back":
+        arrangeSelected("back");
+        return;
+      case "delete":
+        deleteSelected();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function directNodeAllowsTextEdit(node) {
+    if (!node || isImageLikeNode(node)) return false;
+    if (["table", "thead", "tbody", "tfoot", "tr", "svg", "path", "line", "circle", "rect", "canvas", "video", "audio", "iframe", "input", "textarea", "select"].includes(node.tagName.toLowerCase())) return false;
+    return normalizedText(node).length > 0 || node.matches?.("p,h1,h2,h3,h4,h5,h6,li,span,div,td,th,button,a");
+  }
+
+  function isImageLikeNode(node) {
+    return Boolean(node?.matches?.("img,picture,source"));
+  }
+
+  function isDirectNonTextMediaTarget(node) {
+    return Boolean(node?.closest?.("img,picture,video,audio,canvas,iframe"));
+  }
+
+  function directResourceStatus(node) {
+    const image = node?.matches?.("img") ? node : node?.querySelector?.("img");
+    if (!image) return "";
+    const state = image.dataset.chiseloResourceState;
+    if (state === "broken") return "missing";
+    if (state === "loading") return "loading";
+    if (image.getAttribute("original-src")) return "has preview source";
+    if ((image.getAttribute("src") || "").startsWith("data:image/svg")) return "inline svg";
+    if ((image.getAttribute("src") || "").startsWith("data:")) return "embedded";
+    return "";
+  }
+
+  function setupDirectResourceTracking(doc) {
+    for (const image of doc.querySelectorAll("img")) {
+      trackDirectImageResource(image);
+    }
+
+    for (const media of doc.querySelectorAll("video, audio")) {
+      trackDirectMediaResource(media);
+    }
+  }
+
+  function trackDirectImageResource(image) {
+    const update = () => {
+      const src = image.currentSrc || image.getAttribute("src") || "";
+      if (!src.trim()) {
+        setDirectResourceState(image, "broken", "empty image source");
+      } else if (image.complete && image.naturalWidth > 0) {
+        setDirectResourceState(image, "ok", "");
+      } else if (image.complete) {
+        setDirectResourceState(image, "broken", src);
+      } else {
+        setDirectResourceState(image, "loading", src);
+      }
+      scheduleDirectLayoutRefresh();
+    };
+
+    image.addEventListener("load", update);
+    image.addEventListener("error", update);
+    update();
+  }
+
+  function trackDirectMediaResource(media) {
+    const src = media.currentSrc || media.getAttribute("src") || media.querySelector("source")?.getAttribute("src") || "";
+    setDirectResourceState(media, src ? "ok" : "broken", src || "empty media source");
+  }
+
+  function setDirectResourceState(node, state, detail) {
+    const previousState = node.dataset.chiseloResourceState || "";
+    const previousDetail = node.dataset.chiseloResourceDetail || "";
+    node.dataset.chiseloResourceState = state;
+    if (detail) {
+      node.dataset.chiseloResourceDetail = detail;
+    } else {
+      delete node.dataset.chiseloResourceDetail;
+    }
+    if (state === "broken") {
+      node.dataset.chiseloBrokenResource = "true";
+    } else {
+      delete node.dataset.chiseloBrokenResource;
+    }
+    if (previousState !== state || previousDetail !== (detail || "")) {
+      scheduleHTMLDiagnosticsChanged();
+    }
+  }
+
+  function normalizeDirectTablesForEditing(doc) {
+    for (const table of doc.querySelectorAll("table")) {
+      if (!table.style.borderCollapse && table.getAttribute("border")) {
+        table.style.borderCollapse = "collapse";
+      }
+
+      for (const cell of table.querySelectorAll("td, th")) {
+        if (!cell.textContent.trim() && !cell.children.length) {
+          cell.dataset.chiseloEmptyCell = "true";
+        }
+      }
+    }
+  }
+
+  function selectDirectRelative(kind) {
+    if (editorMode !== "html" || !directSelectedNode) return;
+
+    const doc = directSelectedNode.ownerDocument;
+    let target = null;
+
+    if (kind === "parent") {
+      target = directSelectedNode.parentElement;
+      if (target === doc.documentElement) target = doc.body;
+    }
+
+    if (kind === "child") {
+      target = [...directSelectedNode.children].find((node) => isDirectNodeVisible(node)) || directSelectedNode.firstElementChild;
+    }
+
+    if (kind === "previous") {
+      target = directSelectedNode.previousElementSibling;
+    }
+
+    if (kind === "next") {
+      target = directSelectedNode.nextElementSibling;
+    }
+
+    if (target && target !== doc.documentElement) {
+      selectDirectNode(target);
+    }
+  }
+
+  function beginDirectDrag(event, node) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isDirectSelected(node)) {
+      selectDirectNode(node);
+    }
+
+    pushHistory();
+    const nodes = directSelectionNodes().length > 1 && isDirectSelected(node) ? [...directSelectionNodes()] : [node];
+    const startRect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(node);
+    const gestureContext = buildDirectGestureContext(nodes);
+    const selectionPayloadBase = directSelectionPayloadBase(nodes, startRect);
+
+    activeGesture = {
+      mode: "html",
+      type: "drag",
+      node,
+      nodes,
+      startPoint: directPointFromEvent(event),
+      startRect,
+      lastRect: startRect,
+      selectionPayloadBase,
+      startRects: nodes.map((item) => ({ node: item, rect: gestureContext.rectContexts.get(item)?.startRect || directNodeRect(item) })),
+      rectContexts: gestureContext.rectContexts,
+      snapCandidates: gestureContext.snapCandidates
+    };
+
+    const doc = node.ownerDocument;
+    doc.addEventListener("pointermove", continueGesture);
+    doc.addEventListener("pointerup", endGesture, { once: true });
+  }
+
+  function beginDirectResize(event, handle) {
+    if (event.button !== 0 || !directSelectedNode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pushHistory();
+    const nodes = directSelectionNodes();
+    const startRect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(directSelectedNode);
+    const gestureContext = buildDirectGestureContext(nodes);
+    const selectionPayloadBase = directSelectionPayloadBase(nodes, startRect);
+
+    activeGesture = {
+      mode: "html",
+      type: "resize",
+      node: directSelectedNode,
+      nodes,
+      handle,
+      startPoint: pointFromEvent(event),
+      startRect,
+      lastRect: startRect,
+      selectionPayloadBase,
+      startRects: nodes.map((item) => ({ node: item, rect: gestureContext.rectContexts.get(item)?.startRect || directNodeRect(item) })),
+      rectContexts: gestureContext.rectContexts,
+      snapCandidates: gestureContext.snapCandidates,
+      ratio: startRect.w / startRect.h
+    };
+
+    document.addEventListener("pointermove", continueGesture);
+    document.addEventListener("pointerup", endGesture, { once: true });
+  }
+
+  function continueDirectGesture(event) {
+    const point = event.view === directFrame.contentWindow ? directPointFromEvent(event) : pointFromEvent(event);
+    applyDirectGestureUpdate(point, event.shiftKey);
+  }
+
+  function applyDirectGestureUpdate(point, shiftKey = false) {
+    if (!activeGesture || !point) return;
+    const node = activeGesture.node;
+    if (!node || !node.isConnected) return;
+
+    const dx = point.x - activeGesture.startPoint.x;
+    const dy = point.y - activeGesture.startPoint.y;
+    const gestureNodes = (activeGesture.nodes || []).filter((item) => item?.isConnected);
+    let nextRect = activeGesture.startRect;
+
+    if (activeGesture.type === "drag") {
+      nextRect = {
+        ...activeGesture.startRect,
+        x: activeGesture.startRect.x + dx,
+        y: activeGesture.startRect.y + dy
+      };
+    }
+
+    if (activeGesture.type === "resize") {
+      nextRect = resizeRect(activeGesture.startRect, activeGesture.handle, dx, dy, shiftKey ? activeGesture.ratio : null);
+    }
+
+    const activeSet = new Set(gestureNodes.length ? gestureNodes : [node]);
+    const snapped = snapDirectRect(nextRect, activeSet, activeGesture.snapCandidates);
+    activeGesture.lastRect = snapped.rect;
+    if (gestureNodes.length > 1) {
+      applyDirectGroupRects(activeGesture.startRects, activeGesture.startRect, snapped.rect, activeGesture.rectContexts);
+    } else {
+      applyDirectRect(node, snapped.rect, activeGesture.rectContexts?.get(node));
+    }
+    showGuides(snapped.guides);
+    scheduleSelectionBoxUpdate();
+    postSelectionChanged();
+  }
+
+  function directPointFromEvent(event) {
+    const win = event.view || directFrame.contentWindow;
+    return {
+      x: event.clientX + (win?.scrollX || 0),
+      y: event.clientY + (win?.scrollY || 0)
+    };
+  }
+
+  function directNodeRect(node) {
+    const win = node.ownerDocument.defaultView;
+    const rect = node.getBoundingClientRect();
+    return {
+      x: Math.round(rect.left + win.scrollX),
+      y: Math.round(rect.top + win.scrollY),
+      w: Math.round(rect.width),
+      h: Math.round(rect.height),
+      rotation: 0
+    };
+  }
+
+  function directNodesBounds(nodes) {
+    const rects = nodes
+      .filter((node) => node?.isConnected)
+      .map((node) => directNodeRect(node));
+
+    if (!rects.length) return { x: 0, y: 0, w: 0, h: 0, rotation: 0 };
+
+    const left = Math.min(...rects.map((rect) => rect.x));
+    const top = Math.min(...rects.map((rect) => rect.y));
+    const right = Math.max(...rects.map((rect) => rect.x + rect.w));
+    const bottom = Math.max(...rects.map((rect) => rect.y + rect.h));
+
+    return {
+      x: Math.round(left),
+      y: Math.round(top),
+      w: Math.round(right - left),
+      h: Math.round(bottom - top),
+      rotation: 0
+    };
+  }
+
+  function buildDirectGestureContext(nodes) {
+    const activeSet = new Set((nodes || []).filter((node) => node?.isConnected));
+    const rectContexts = new Map();
+
+    for (const node of activeSet) {
+      rectContexts.set(node, directRectContext(node, activeSet));
+    }
+
+    return {
+      rectContexts,
+      snapCandidates: buildDirectSnapCandidates(activeSet)
+    };
+  }
+
+  function directRectContext(node, activeSet) {
+    const startRect = directNodeRect(node);
+    const anchor = positionedAncestor(node);
+    const selectedAncestor = directSelectedAncestor(node, activeSet);
+
+    if (directLayoutMode === "transform" && !node.dataset.chiseloBaseTransform) {
+      node.dataset.chiseloBaseTransform = node.style.transform || "none";
+      node.dataset.chiseloTranslateX = "0";
+      node.dataset.chiseloTranslateY = "0";
+    }
+
+    return {
+      startRect,
+      anchor,
+      anchorRect: anchor ? directNodeRect(anchor) : { x: 0, y: 0 },
+      canUseAnchorCache: !anchor || !activeSet.has(anchor),
+      canUseTransformCache: !selectedAncestor,
+      baseTransform: node.dataset.chiseloBaseTransform || node.style.transform || "none",
+      translateX: Number(node.dataset.chiseloTranslateX || 0),
+      translateY: Number(node.dataset.chiseloTranslateY || 0)
+    };
+  }
+
+  function directSelectedAncestor(node, activeSet) {
+    let parent = node.parentElement;
+    const doc = node.ownerDocument;
+    while (parent && parent !== doc.body && parent !== doc.documentElement) {
+      if (activeSet.has(parent)) return parent;
+      parent = parent.parentElement;
+    }
+    return null;
+  }
+
+  function buildDirectSnapCandidates(activeNodes) {
+    const canvas = directCanvas();
+    const x = [
+      { value: 0 },
+      { value: canvas.width / 2 },
+      { value: canvas.width }
+    ];
+    const y = [
+      { value: 0 },
+      { value: canvas.height / 2 },
+      { value: canvas.height }
+    ];
+
+    const doc = directFrame?.contentDocument;
+    if (!doc) return { x, y };
+
+    const nodes = [...doc.querySelectorAll("[data-chiselo-id]")].slice(0, 600);
+    for (const node of nodes) {
+      if (activeNodes.has(node) || !isDirectNodeVisible(node)) continue;
+      const nodeRect = directNodeRect(node);
+      x.push({ value: nodeRect.x }, { value: nodeRect.x + nodeRect.w / 2 }, { value: nodeRect.x + nodeRect.w });
+      y.push({ value: nodeRect.y }, { value: nodeRect.y + nodeRect.h / 2 }, { value: nodeRect.y + nodeRect.h });
+    }
+
+    return { x, y };
+  }
+
+  function applyDirectRect(node, rect, context = null) {
+    if (directLayoutMode === "transform") {
+      applyDirectTransformRect(node, rect, context);
+      return;
+    }
+
+    applyDirectFreeRect(node, rect, context);
+  }
+
+  function applyDirectFreeRect(node, rect, context = null) {
+    const anchor = context?.canUseAnchorCache ? context.anchor : positionedAncestor(node);
+    const anchorRect = context?.canUseAnchorCache
+      ? context.anchorRect
+      : anchor
+        ? directNodeRect(anchor)
+        : { x: 0, y: 0 };
+    node.style.position = "absolute";
+    node.style.boxSizing = "border-box";
+    node.style.left = `${Math.round(rect.x - anchorRect.x)}px`;
+    node.style.top = `${Math.round(rect.y - anchorRect.y)}px`;
+    node.style.width = `${Math.max(MIN_SIZE, Math.round(rect.w))}px`;
+    node.style.height = `${Math.max(MIN_SIZE, Math.round(rect.h))}px`;
+  }
+
+  function applyDirectGroupRects(startRects, startGroupRect, nextGroupRect, rectContexts = null) {
+    const scaleX = startGroupRect.w ? nextGroupRect.w / startGroupRect.w : 1;
+    const scaleY = startGroupRect.h ? nextGroupRect.h / startGroupRect.h : 1;
+
+    for (const item of startRects) {
+      const rect = item.rect;
+      applyDirectRect(item.node, {
+        x: nextGroupRect.x + (rect.x - startGroupRect.x) * scaleX,
+        y: nextGroupRect.y + (rect.y - startGroupRect.y) * scaleY,
+        w: Math.max(MIN_SIZE, rect.w * scaleX),
+        h: Math.max(MIN_SIZE, rect.h * scaleY)
+      }, rectContexts?.get(item.node));
+    }
+  }
+
+  function applyDirectTransformRect(node, rect, context = null) {
+    if (!node.dataset.chiseloBaseTransform) {
+      node.dataset.chiseloBaseTransform = node.style.transform || "none";
+      node.dataset.chiseloTranslateX = "0";
+      node.dataset.chiseloTranslateY = "0";
+    }
+
+    const useCache = context?.canUseTransformCache && context.startRect;
+    const currentRect = useCache ? null : directNodeRect(node);
+    const tx = useCache
+      ? context.translateX + (rect.x - context.startRect.x)
+      : Number(node.dataset.chiseloTranslateX || 0) + (rect.x - currentRect.x);
+    const ty = useCache
+      ? context.translateY + (rect.y - context.startRect.y)
+      : Number(node.dataset.chiseloTranslateY || 0) + (rect.y - currentRect.y);
+    const baseTransform = useCache ? context.baseTransform : node.dataset.chiseloBaseTransform;
+    const base = baseTransform === "none" ? "" : baseTransform;
+
+    node.dataset.chiseloTranslateX = String(Math.round(tx));
+    node.dataset.chiseloTranslateY = String(Math.round(ty));
+    node.style.boxSizing = "border-box";
+    node.style.width = `${Math.max(MIN_SIZE, Math.round(rect.w))}px`;
+    node.style.height = `${Math.max(MIN_SIZE, Math.round(rect.h))}px`;
+    node.style.transform = `${base} translate(${Math.round(tx)}px, ${Math.round(ty)}px)`.trim();
+  }
+
+  function positionedAncestor(node) {
+    const doc = node.ownerDocument;
+    let parent = node.parentElement;
+    while (parent && parent !== doc.body && parent !== doc.documentElement) {
+      const style = doc.defaultView.getComputedStyle(parent);
+      if (style.position !== "static") return parent;
+      parent = parent.parentElement;
+    }
+    return null;
+  }
+
+  function snapDirectRect(inputRect, activeNode, cachedCandidates = null) {
+    const rect = { ...inputRect };
+    const guides = [];
+    const activeNodes = activeNode instanceof Set ? activeNode : new Set(activeNode ? [activeNode] : []);
+    const candidates = cachedCandidates || buildDirectSnapCandidates(activeNodes);
+    const xCandidates = candidates.x;
+    const yCandidates = candidates.y;
+
+    const xEdges = [
+      { value: () => rect.x, apply: (value) => { rect.x = value; } },
+      { value: () => rect.x + rect.w / 2, apply: (value) => { rect.x = value - rect.w / 2; } },
+      { value: () => rect.x + rect.w, apply: (value) => { rect.x = value - rect.w; } }
+    ];
+    const yEdges = [
+      { value: () => rect.y, apply: (value) => { rect.y = value; } },
+      { value: () => rect.y + rect.h / 2, apply: (value) => { rect.y = value - rect.h / 2; } },
+      { value: () => rect.y + rect.h, apply: (value) => { rect.y = value - rect.h; } }
+    ];
+
+    const xSnap = bestSnap(xEdges, xCandidates);
+    if (xSnap) {
+      xSnap.edge.apply(xSnap.candidate.value);
+      guides.push({ axis: "x", value: xSnap.candidate.value });
+    }
+
+    const ySnap = bestSnap(yEdges, yCandidates);
+    if (ySnap) {
+      ySnap.edge.apply(ySnap.candidate.value);
+      guides.push({ axis: "y", value: ySnap.candidate.value });
+    }
+
+    rect.x = Math.round(rect.x);
+    rect.y = Math.round(rect.y);
+    rect.w = Math.round(rect.w);
+    rect.h = Math.round(rect.h);
+    return { rect, guides };
+  }
+
+  function isDirectNodeVisible(node) {
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    return isVisibleStyle(style) && rect.width > 3 && rect.height > 3;
+  }
+
+  function beginDirectTextEdit(node) {
+    if (!node || !directNodeAllowsTextEdit(node)) return null;
+    pendingDirectTextEditNode = null;
+    selectDirectNode(node);
+    pushHistory();
+    activeDirectTextEditNode = node;
+    node.setAttribute("contenteditable", "true");
+    node.setAttribute("spellcheck", "true");
+    node.focus();
+
+    selectDirectTextContents(node);
+    node.ownerDocument.defaultView.requestAnimationFrame(() => selectDirectTextContents(node));
+    setTimeout(() => {
+      if (node.isConnected && node.getAttribute("contenteditable") === "true") {
+        selectDirectTextContents(node);
+      }
+    }, 80);
+
+    const finish = () => {
+      if (activeDirectTextEditNode === node) activeDirectTextEditNode = null;
+      node.removeAttribute("contenteditable");
+      node.removeAttribute("spellcheck");
+      node.removeEventListener("blur", finish);
+      node.removeEventListener("keydown", handleEditingKeydown);
+      scheduleHTMLTreeChanged();
+      postSelectionChanged();
+    };
+
+    const handleEditingKeydown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        node.blur();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        node.blur();
+      }
+    };
+
+    node.addEventListener("blur", finish);
+    node.addEventListener("keydown", handleEditingKeydown);
+    postSelectionChanged();
+    return node;
+  }
+
+  function scheduleDirectTextEdit(node) {
+    pendingDirectTextEditNode = node;
+    setTimeout(() => {
+      if (pendingDirectTextEditNode !== node) return;
+      pendingDirectTextEditNode = null;
+      if (node?.isConnected) beginDirectTextEdit(node);
+    }, 35);
+  }
+
+  function selectDirectTextContents(node) {
+    const selection = node.ownerDocument.defaultView.getSelection();
+    const range = node.ownerDocument.createRange();
+    range.selectNodeContents(node);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function updateDirectElement(nextElement) {
+    const nodes = directSelectionNodes();
+    if (nodes.length > 1) {
+      updateDirectGroupElement(nodes, nextElement);
+      return;
+    }
+
+    if (!directSelectedNode || !directSelectedNode.isConnected) return;
+    pushHistory({ coalesceKey: directHistoryCoalesceKey("direct-update", nodes), interval: 800 });
+    applyDirectRect(directSelectedNode, nextElement);
+    applyDirectStyle(directSelectedNode, nextElement.style || {});
+    applyDirectImageMetadata(directSelectedNode, nextElement);
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function updateDirectGroupElement(nodes, nextElement) {
+    if (!nodes.length) return;
+
+    pushHistory({ coalesceKey: directHistoryCoalesceKey("direct-group-update", nodes), interval: 800 });
+    const currentRect = directNodesBounds(nodes);
+    const nextRect = {
+      x: Number.isFinite(nextElement.x) ? nextElement.x : currentRect.x,
+      y: Number.isFinite(nextElement.y) ? nextElement.y : currentRect.y,
+      w: Number.isFinite(nextElement.w) ? nextElement.w : currentRect.w,
+      h: Number.isFinite(nextElement.h) ? nextElement.h : currentRect.h
+    };
+    const startRects = nodes.map((node) => ({ node, rect: directNodeRect(node) }));
+    applyDirectGroupRects(startRects, currentRect, nextRect);
+
+    if (nextElement.style) {
+      for (const node of nodes) {
+        applyDirectStyle(node, nextElement.style);
+      }
+    }
+
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function applyDirectStyle(node, style) {
+    if (style.fontFamily) node.style.fontFamily = style.fontFamily;
+    if (Number.isFinite(style.fontSize)) node.style.fontSize = `${style.fontSize}px`;
+    if (Number.isFinite(style.fontWeight)) node.style.fontWeight = `${style.fontWeight}`;
+    if (Number.isFinite(style.lineHeight)) node.style.lineHeight = `${style.lineHeight}`;
+    if (style.color) node.style.color = style.color;
+    if (style.textAlign) node.style.textAlign = style.textAlign;
+    if (style.fill) node.style.background = style.fill;
+
+    if (Number.isFinite(style.strokeWidth)) {
+      const color = style.stroke || node.ownerDocument.defaultView.getComputedStyle(node).borderTopColor || "transparent";
+      node.style.border = `${Math.max(0, style.strokeWidth)}px solid ${color}`;
+    } else if (style.stroke) {
+      node.style.borderColor = style.stroke;
+    }
+
+    if (Number.isFinite(style.radius)) node.style.borderRadius = `${Math.max(0, style.radius)}px`;
+  }
+
+  function applyDirectImageMetadata(node, nextElement) {
+    if (!node.matches?.("img")) return;
+    if (typeof nextElement.imageSource === "string") node.setAttribute("src", nextElement.imageSource);
+    if (typeof nextElement.imageAlt === "string") node.setAttribute("alt", nextElement.imageAlt);
+  }
+
+  function replaceSelectedImageSrc(src) {
+    if (editorMode !== "html" || !directSelectedNode) return null;
+    const image = selectedImageNode();
+    if (!image) return null;
+
+    pushHistory();
+    image.setAttribute("src", src);
+    selectDirectNode(image);
+    scheduleHTMLTreeChanged();
+    postSelectionChanged();
+    return selectedElement();
+  }
+
+  function replaceSelectedImageFromBase64(mimeType, base64) {
+    if (!mimeType || !base64) return null;
+    return replaceSelectedImageSrc(`data:${mimeType};base64,${base64}`);
+  }
+
+  function selectedImageNode() {
+    if (!directSelectedNode || !directSelectedNode.isConnected) return null;
+    if (directSelectedNode.matches?.("img")) return directSelectedNode;
+    return directSelectedNode.querySelector?.("img") || null;
+  }
+
+  function styleSelectedImage(style) {
+    const image = selectedImageNode();
+    if (!image) return null;
+    pushHistory();
+    image.style.width = "100%";
+    image.style.height = "100%";
+    image.style.objectFit = style.objectFit || "contain";
+    selectDirectNode(image);
+    scheduleHTMLTreeChanged();
+    postSelectionChanged();
+    return selectedElement();
+  }
+
+  function tableAddRowAfter() {
+    const context = directTableContext();
+    if (!context?.row) return null;
+
+    pushHistory();
+    const row = cloneTableRow(context);
+    context.row.insertAdjacentElement("afterend", row);
+    const target = row.cells[Math.min(context.columnIndex, Math.max(0, row.cells.length - 1))] || row;
+    selectDirectNode(target);
+    scheduleHTMLTreeChanged();
+    return selectedElement();
+  }
+
+  function tableDeleteRow() {
+    const context = directTableContext();
+    if (!context?.row || context.rows.length <= 1) return null;
+
+    pushHistory();
+    const currentIndex = context.rows.indexOf(context.row);
+    const targetRow = context.rows[currentIndex + 1] || context.rows[currentIndex - 1] || null;
+    context.row.remove();
+    if (targetRow?.isConnected) {
+      selectDirectNode(targetRow.cells[Math.min(context.columnIndex, Math.max(0, targetRow.cells.length - 1))] || targetRow);
+    } else {
+      directSelectedNode = null;
+      selectedId = null;
+      updateSelectionBox();
+      postSelectionChanged();
+    }
+    scheduleHTMLTreeChanged();
+    return selectedElement();
+  }
+
+  function tableAddColumnAfter() {
+    const context = directTableContext();
+    if (!context?.table || !context.rows.length) return null;
+
+    pushHistory();
+    let selectedCell = null;
+    const insertAfterColumn = context.columnIndex;
+    const grid = tableGrid(context.table);
+
+    for (let rowIndex = 0; rowIndex < context.rows.length; rowIndex += 1) {
+      const row = context.rows[rowIndex];
+      const rowEntries = uniqueTableEntries(grid.rows[rowIndex] || []);
+      const spanning = rowEntries.find((entry) => entry.start <= insertAfterColumn && entry.end > insertAfterColumn + 1);
+      if (spanning) {
+        spanning.cell.setAttribute("colspan", String(spanning.colspan + 1));
+        if (row === context.row) selectedCell = spanning.cell;
+        continue;
+      }
+
+      const previous = [...rowEntries].reverse().find((entry) => entry.end <= insertAfterColumn + 1);
+      const next = rowEntries.find((entry) => entry.start > insertAfterColumn);
+      const reference = previous?.cell || next?.cell || context.cell || context.table.querySelector("td, th");
+      const cell = cloneTableCell(reference || row.ownerDocument.createElement("td"));
+      if (previous?.cell) {
+        previous.cell.insertAdjacentElement("afterend", cell);
+      } else if (next?.cell) {
+        row.insertBefore(cell, next.cell);
+      } else {
+        row.appendChild(cell);
+      }
+      if (row === context.row) selectedCell = cell;
+    }
+
+    if (selectedCell) selectDirectNode(selectedCell);
+    scheduleHTMLTreeChanged();
+    return selectedElement();
+  }
+
+  function tableDeleteColumn() {
+    const context = directTableContext();
+    if (!context?.table || maxTableColumns(context.table) <= 1) return null;
+
+    pushHistory();
+    let nextSelection = null;
+    const grid = tableGrid(context.table);
+    const touched = new Set();
+
+    for (let rowIndex = 0; rowIndex < context.rows.length; rowIndex += 1) {
+      const entry = grid.rows[rowIndex]?.[context.columnIndex];
+      if (!entry || touched.has(entry.cell)) continue;
+      touched.add(entry.cell);
+      const fallback = entry.cell.nextElementSibling || entry.cell.previousElementSibling || entry.cell.parentElement;
+      if (entry.cell === context.cell || entry.row === context.row) nextSelection = fallback;
+
+      if (entry.colspan > 1) {
+        entry.cell.setAttribute("colspan", String(entry.colspan - 1));
+      } else {
+        entry.cell.remove();
+      }
+    }
+
+    if (nextSelection?.isConnected) selectDirectNode(nextSelection);
+    scheduleHTMLTreeChanged();
+    return selectedElement();
+  }
+
+  function styleSelectedTableCell(style) {
+    const context = directTableContext();
+    if (!context?.cell) return null;
+
+    pushHistory();
+    applyDirectStyle(context.cell, style);
+    selectDirectNode(context.cell);
+    scheduleHTMLTreeChanged();
+    postSelectionChanged();
+    return selectedElement();
+  }
+
+  function directTableContext() {
+    if (editorMode !== "html" || !directSelectedNode || !directSelectedNode.isConnected) return null;
+    const selected = directSelectedNode;
+    const table = selected.matches?.("table") ? selected : selected.closest?.("table");
+    if (!table) return null;
+
+    const rows = [...table.rows];
+    const cell = selected.matches?.("td, th") ? selected : selected.closest?.("td, th");
+    const row = cell?.parentElement || (selected.matches?.("tr") ? selected : selected.closest?.("tr")) || rows[0] || null;
+    const grid = tableGrid(table);
+    const rowIndex = row ? rows.indexOf(row) : 0;
+    const columnIndex = cell ? tableLogicalColumnIndex(grid, cell) : 0;
+
+    return { table, rows, cell, row, rowIndex, columnIndex, grid };
+  }
+
+  function cloneTableRow(context) {
+    const doc = context.row.ownerDocument;
+    const row = doc.createElement("tr");
+    const grid = tableGrid(context.table);
+    const insertAfterRow = Math.max(0, context.rowIndex);
+    const occupiedColumns = new Set();
+
+    for (const entry of grid.entries) {
+      if (entry.rowStart <= insertAfterRow && entry.rowEnd > insertAfterRow + 1) {
+        entry.cell.setAttribute("rowspan", String(entry.rowspan + 1));
+        for (let column = entry.start; column < entry.end; column += 1) {
+          occupiedColumns.add(column);
+        }
+      }
+    }
+
+    const reference = context.cell || context.row.cells[0] || context.table.querySelector("td, th");
+    const columns = Math.max(1, grid.maxColumns);
+    for (let column = 0; column < columns; column += 1) {
+      if (occupiedColumns.has(column)) continue;
+      const cell = cloneTableCell(reference || doc.createElement("td"));
+      resetInsertedTableCell(cell, reference?.tagName?.toLowerCase() === "th" ? "新表头" : "新单元格");
+      row.appendChild(cell);
+    }
+
+    prepareClonedDirectSubtree(row);
+    return row;
+  }
+
+  function cloneTableCell(referenceCell) {
+    const cell = referenceCell.cloneNode(true);
+    prepareClonedDirectSubtree(cell);
+    resetInsertedTableCell(cell, referenceCell.tagName.toLowerCase() === "th" ? "新表头" : "新单元格");
+    return cell;
+  }
+
+  function prepareClonedDirectSubtree(root) {
+    for (const node of [root, ...root.querySelectorAll("*")]) {
+      stripChiseloAttributes(node);
+      ensureDirectId(node);
+    }
+  }
+
+  function resetInsertedTableCell(cell, label) {
+    cell.removeAttribute("rowspan");
+    cell.removeAttribute("colspan");
+    while (cell.firstChild) cell.firstChild.remove();
+    cell.textContent = label;
+  }
+
+  function maxTableColumns(table) {
+    return tableGrid(table).maxColumns;
+  }
+
+  function tableGrid(table) {
+    const rows = [...table.rows];
+    const gridRows = [];
+    const entries = [];
+    let maxColumns = 0;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      const row = rows[rowIndex];
+      gridRows[rowIndex] = gridRows[rowIndex] || [];
+      let column = 0;
+
+      for (const cell of row.cells) {
+        while (gridRows[rowIndex][column]) column += 1;
+        const colspan = positiveSpan(cell.getAttribute("colspan"));
+        const rowspan = positiveSpan(cell.getAttribute("rowspan"));
+        const entry = {
+          cell,
+          row,
+          rowStart: rowIndex,
+          rowEnd: rowIndex + rowspan,
+          start: column,
+          end: column + colspan,
+          colspan,
+          rowspan
+        };
+        entries.push(entry);
+
+        for (let r = rowIndex; r < rowIndex + rowspan; r += 1) {
+          gridRows[r] = gridRows[r] || [];
+          for (let c = column; c < column + colspan; c += 1) {
+            gridRows[r][c] = entry;
+          }
+        }
+        column += colspan;
+      }
+
+      maxColumns = Math.max(maxColumns, gridRows[rowIndex].length);
+    }
+
+    return { rows: gridRows, entries, maxColumns };
+  }
+
+  function positiveSpan(value) {
+    const parsed = parseInt(value || "1", 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }
+
+  function uniqueTableEntries(entries) {
+    const unique = [];
+    const seen = new Set();
+    for (const entry of entries) {
+      if (!entry || seen.has(entry.cell)) continue;
+      seen.add(entry.cell);
+      unique.push(entry);
+    }
+    return unique.sort((a, b) => a.start - b.start);
+  }
+
+  function tableLogicalColumnIndex(grid, cell) {
+    return grid.entries.find((entry) => entry.cell === cell)?.start || 0;
+  }
+
+  function topLevelDirectNodes(nodes) {
+    return nodes.filter((node) => !nodes.some((other) => other !== node && other.contains?.(node)));
+  }
+
+  function deleteDirectSelected() {
+    const nodes = topLevelDirectNodes(directSelectionNodes());
+    if (!nodes.length) return false;
+    pushHistory();
+    for (const node of nodes) {
+      node.remove();
+    }
+    directSelectedNode = null;
+    directSelectedNodes = [];
+    selectedId = null;
+    updateSelectionBox();
+    scheduleHTMLTreeChanged();
+    postSelectionChanged();
+    return true;
+  }
+
+  function duplicateDirectSelected() {
+    const nodes = topLevelDirectNodes(directSelectionNodes());
+    if (!nodes.length) return false;
+
+    pushHistory();
+    const copies = [];
+    for (const node of nodes) {
+      const copy = node.cloneNode(true);
+      prepareClonedDirectSubtree(copy);
+      node.insertAdjacentElement("afterend", copy);
+      const rect = directNodeRect(node);
+      applyDirectFreeRect(copy, {
+        ...rect,
+        x: rect.x + 18,
+        y: rect.y + 18
+      });
+      copies.push(copy);
+    }
+
+    setDirectSelection(copies, copies[copies.length - 1]);
+    scheduleHTMLTreeChanged();
+    return true;
+  }
+
+  function alignDirectSelected(edge) {
+    const nodes = directSelectionNodes();
+    if (!nodes.length) return;
+    pushHistory();
+    const rect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(directSelectedNode);
+    const frame = directAlignmentFrame(directSelectedNode);
+    const original = { ...rect };
+    if (edge === "left") rect.x = frame.x;
+    if (edge === "center") rect.x = Math.round(frame.x + (frame.w - rect.w) / 2);
+    if (edge === "right") rect.x = Math.round(frame.x + frame.w - rect.w);
+    if (edge === "top") rect.y = frame.y;
+    if (edge === "middle") rect.y = Math.round(frame.y + (frame.h - rect.h) / 2);
+    if (edge === "bottom") rect.y = Math.round(frame.y + frame.h - rect.h);
+    if (nodes.length > 1) {
+      for (const node of nodes) {
+        const nodeRect = directNodeRect(node);
+        nodeRect.x += rect.x - original.x;
+        nodeRect.y += rect.y - original.y;
+        applyDirectRect(node, nodeRect);
+      }
+    } else {
+      applyDirectRect(directSelectedNode, rect);
+    }
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function fitDirectSelected(mode) {
+    const nodes = directSelectionNodes();
+    if (!nodes.length) return;
+
+    pushHistory();
+    const rect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(directSelectedNode);
+    const original = { ...rect };
+    const frame = directAlignmentFrame(directSelectedNode);
+    if (mode === "width" || mode === "page") {
+      rect.x = frame.x;
+      rect.w = frame.w;
+    }
+    if (mode === "height" || mode === "page") {
+      rect.y = frame.y;
+      rect.h = frame.h;
+    }
+    if (nodes.length > 1) {
+      const startRects = nodes.map((node) => ({ node, rect: directNodeRect(node) }));
+      applyDirectGroupRects(startRects, original, rect);
+    } else {
+      applyDirectRect(directSelectedNode, rect);
+    }
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function snapDirectSelectedToGrid(grid) {
+    const nodes = directSelectionNodes();
+    if (!nodes.length) return;
+
+    pushHistory();
+    const rect = nodes.length > 1 ? directNodesBounds(nodes) : directNodeRect(directSelectedNode);
+    const original = { ...rect };
+    rect.x = snapNumber(rect.x, grid);
+    rect.y = snapNumber(rect.y, grid);
+    rect.w = Math.max(MIN_SIZE, snapNumber(rect.w, grid));
+    rect.h = Math.max(MIN_SIZE, snapNumber(rect.h, grid));
+    if (nodes.length > 1) {
+      const startRects = nodes.map((node) => ({ node, rect: directNodeRect(node) }));
+      applyDirectGroupRects(startRects, original, rect);
+    } else {
+      applyDirectRect(directSelectedNode, rect);
+    }
+    updateSelectionBox();
+    postSelectionChanged();
+  }
+
+  function directAlignmentFrame(node) {
+    const page = node.closest(".slide, .sheet, [data-slide], [data-page]");
+    if (page && page !== node) return directNodeRect(page);
+    return directCanvasRect();
+  }
+
+  function directCanvasRect() {
+    const canvas = directCanvas();
+    return { x: 0, y: 0, w: canvas.width, h: canvas.height };
+  }
+
+  function arrangeDirectSelected(mode) {
+    const nodes = directSelectionNodes();
+    if (!nodes.length) return false;
+    pushHistory();
+    for (const node of nodes) {
+      const style = node.ownerDocument.defaultView.getComputedStyle(node);
+      const current = parseInt(style.zIndex, 10);
+      const z = Number.isFinite(current) ? current : 1;
+      node.style.zIndex = String(mode === "back" ? 0 : mode === "backward" ? Math.max(0, z - 1) : z + 1);
+      if (mode === "front") node.style.zIndex = "9999";
+    }
+    postSelectionChanged();
+    return true;
+  }
+
+  function setDirectLayoutMode(mode) {
+    if (editorMode !== "html") return;
+    directLayoutMode = mode === "transform" ? "transform" : "free";
+    postSelectionChanged();
+  }
+
+  function loadDeck(nextDeck) {
+    editorMode = "deck";
+    resetZoom();
+    if (directFrame) {
+      directFrame.remove();
+      directFrame = null;
+    }
+    directSelectedNode = null;
+    directSelectedNodes = [];
+    deck = nextDeck;
+    currentSlideIndex = 0;
+    selectedId = null;
+    historyPast = [];
+    historyFuture = [];
+    clearDirty();
+    render();
+    postSelectionChanged();
+  }
+
+  function selectSlide(index) {
+    if (editorMode === "html") return;
+    const nextIndex = Math.min(Math.max(Number(index) || 0, 0), deck.slides.length - 1);
+    if (currentSlideIndex === nextIndex) return;
+    currentSlideIndex = nextIndex;
+    selectedId = null;
+    render();
+    postSelectionChanged();
+  }
+
+  function loadDeckFromBase64(base64) {
+    const json = decodeBase64(base64);
+    loadDeck(JSON.parse(json));
+  }
+
+  function newDeck() {
+    loadDeck(sampleDeck());
+  }
+
+  async function importHTMLFromBase64(base64, baseHref = "") {
+    const html = decodeBase64(base64);
+    return await importHTML(html, baseHref);
+  }
+
+  async function importHTML(html, baseHref = "") {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.left = "-10000px";
+    iframe.style.top = "0";
+    iframe.style.width = "1600px";
+    iframe.style.height = "2200px";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    iframe.srcdoc = withBaseElement(html, baseHref);
+
+    await new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        setTimeout(resolve, 120);
+      };
+      iframe.addEventListener("load", finish, { once: true });
+      setTimeout(finish, 600);
+    });
+
+    const doc = iframe.contentDocument;
+    stabilizeImportDocument(doc);
+    const pages = [...doc.querySelectorAll(".slide, .sheet, [data-slide], [data-page]")];
+    const pageNodes = pages.length ? pages : [...doc.body.children].filter((node) => node.getBoundingClientRect().width > 20);
+    const fallbackPages = pageNodes.length ? pageNodes : [doc.body];
+    const firstRect = roundedRect(fallbackPages[0].getBoundingClientRect(), fallbackPages[0].getBoundingClientRect());
+    const firstStyle = doc.defaultView.getComputedStyle(fallbackPages[0]);
+
+    const importedDeck = {
+      version: 1,
+      canvas: {
+        width: Math.max(320, firstRect.w),
+        height: Math.max(180, firstRect.h),
+        background: cssBackground(firstStyle)
+      },
+      slides: fallbackPages.map((page, index) => extractHTMLPage(doc, page, index))
+    };
+
+    iframe.remove();
+    loadDeck(importedDeck);
+    return importedDeck;
+  }
+
+  function stabilizeImportDocument(doc) {
+    if (!doc?.head) return;
+    let style = doc.getElementById("__chiselo_import_stability");
+    if (!style) {
+      style = doc.createElement("style");
+      style.id = "__chiselo_import_stability";
+      doc.head.appendChild(style);
+    }
+    style.textContent = `
+      html { scroll-behavior: auto !important; }
+      *, *::before, *::after {
+        animation-play-state: paused !important;
+        transition-property: none !important;
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+      }
+    `;
+    for (const video of doc.querySelectorAll("video")) {
+      try { video.pause(); } catch {}
+    }
+    doc.defaultView?.scrollTo(0, 0);
+  }
+
+  function extractHTMLPage(doc, page, pageIndex) {
+    const pageRect = page.getBoundingClientRect();
+    const elements = [];
+    let z = 1;
+
+    for (const node of visualNodes(page)) {
+      const element = rectElementFromNode(doc, node, pageRect, pageIndex + 1, z);
+      if (element) {
+        elements.push(element);
+        z += 1;
+      }
+    }
+
+    let imageZ = z + 50;
+    for (const node of imageNodes(page)) {
+      const element = imageElementFromNode(doc, node, pageRect, pageIndex + 1, imageZ);
+      if (element) {
+        elements.push(element);
+        imageZ += 1;
+      }
+    }
+
+    const textStartZ = imageZ + 100;
+    let textZ = textStartZ;
+    for (const node of textNodes(page)) {
+      const element = textElementFromNode(doc, node, pageRect, pageIndex + 1, textZ);
+      if (element) {
+        elements.push(element);
+        textZ += 1;
+      }
+    }
+
+    let pseudoZ = textZ + 100;
+    for (const node of pseudoNodes(page)) {
+      for (const pseudo of ["::before", "::after"]) {
+        const element = pseudoElementFromNode(doc, node, pseudo, pageRect, pageIndex + 1, pseudoZ);
+        if (element) {
+          elements.push(element);
+          pseudoZ += 1;
+        }
+      }
+    }
+
+    return {
+      id: `page-${pageIndex + 1}`,
+      title: `${doc.title || "Imported HTML"} ${pageIndex + 1}`,
+      elements
+    };
+  }
+
+  function visualNodes(page) {
+    return [...page.querySelectorAll("*")]
+      .filter((node) => {
+        if (node.matches?.("img")) return false;
+        if (node.closest("svg")) return false;
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) return false;
+
+        const style = node.ownerDocument.defaultView.getComputedStyle(node);
+        if (!isVisibleStyle(style)) return false;
+
+        const hasBackground = style.backgroundImage !== "none" || !isTransparent(style.backgroundColor);
+        const hasBorder = ["Top", "Right", "Bottom", "Left"].some((side) => parseFloat(style[`border${side}Width`]) > 0 && !isTransparent(style[`border${side}Color`]));
+        const isTinyDecoration = rect.width < 18 && rect.height < 18;
+
+        return !isTinyDecoration && (hasBackground || hasBorder);
+      })
+      .filter((node) => {
+        const style = node.ownerDocument.defaultView.getComputedStyle(node);
+        if (style.position === "absolute") return true;
+        const parent = node.parentElement;
+        if (!parent) return true;
+        const parentStyle = node.ownerDocument.defaultView.getComputedStyle(parent);
+        const sameBackground = cssBackground(style) === cssBackground(parentStyle);
+        const noBorder = ["Top", "Right", "Bottom", "Left"].every((side) => parseFloat(style[`border${side}Width`]) === 0);
+        return !(sameBackground && noBorder && node.children.length > 3);
+      });
+  }
+
+  function textNodes(page) {
+    const selectors = [
+      "h1",
+      "h2",
+      "h3",
+      "p",
+      "li",
+      ".eyebrow",
+      ".band-subtitle",
+      ".role-emphasis",
+      ".section-title",
+      ".stat strong",
+      ".stat span",
+      ".location-text",
+      ".email"
+    ];
+    const seen = new Set();
+    const nodes = [];
+
+    for (const selector of selectors) {
+      for (const node of page.querySelectorAll(selector)) {
+        if (seen.has(node) || node.closest("svg")) continue;
+        seen.add(node);
+        nodes.push(node);
+      }
+    }
+
+    return nodes.filter((node) => {
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 5 || rect.height < 5) return false;
+      const style = node.ownerDocument.defaultView.getComputedStyle(node);
+      if (!isVisibleStyle(style)) return false;
+      return normalizedText(node).length > 0;
+    });
+  }
+
+  function imageNodes(page) {
+    return [...page.querySelectorAll("img")]
+      .filter((node) => {
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) return false;
+        const style = node.ownerDocument.defaultView.getComputedStyle(node);
+        return isVisibleStyle(style);
+      });
+  }
+
+  function pseudoNodes(page) {
+    return [...page.querySelectorAll("*")]
+      .filter((node) => !node.closest("svg"))
+      .filter((node) => {
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return false;
+        const style = node.ownerDocument.defaultView.getComputedStyle(node);
+        return isVisibleStyle(style);
+      });
+  }
+
+  function rectElementFromNode(doc, node, pageRect, pageNumber, z) {
+    const style = doc.defaultView.getComputedStyle(node);
+    const rect = roundedRect(node.getBoundingClientRect(), pageRect);
+    if (rect.w < 8 || rect.h < 8) return null;
+
+    return {
+      id: uniqueElementId(`p${pageNumber}-${nodeNameSlug(node)}-box`, z),
+      type: "rect",
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h,
+      rotation: rotationFromTransform(style.transform),
+      z,
+      style: {
+        fill: cssBackground(style),
+        stroke: firstBorderColor(style),
+        strokeWidth: firstBorderWidth(style),
+        radius: parseFloat(style.borderTopLeftRadius) || 0
+      }
+    };
+  }
+
+  function imageElementFromNode(doc, node, pageRect, pageNumber, z) {
+    const style = doc.defaultView.getComputedStyle(node);
+    const rect = roundedRect(node.getBoundingClientRect(), pageRect);
+    if (rect.w < 8 || rect.h < 8) return null;
+
+    return {
+      id: uniqueElementId(`p${pageNumber}-${nodeNameSlug(node)}-image`, z),
+      type: "image",
+      tagName: "img",
+      imageSource: node.currentSrc || node.src || node.getAttribute("src") || "",
+      imageAlt: node.getAttribute("alt") || "",
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h,
+      rotation: rotationFromTransform(style.transform),
+      z,
+      style: {
+        stroke: firstBorderColor(style),
+        strokeWidth: firstBorderWidth(style),
+        radius: parseFloat(style.borderTopLeftRadius) || 0
+      }
+    };
+  }
+
+  function textElementFromNode(doc, node, pageRect, pageNumber, z) {
+    const style = doc.defaultView.getComputedStyle(node);
+    const rect = roundedRect(node.getBoundingClientRect(), pageRect);
+    const text = normalizedText(node);
+    if (!text || rect.w < 5 || rect.h < 5) return null;
+
+    const fontSize = parseFloat(style.fontSize) || 16;
+    const lineHeight = style.lineHeight === "normal" ? 1.2 : Math.max(0.8, (parseFloat(style.lineHeight) || fontSize * 1.2) / fontSize);
+
+    return {
+      id: uniqueElementId(`p${pageNumber}-${nodeNameSlug(node)}-text`, z),
+      type: "text",
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: Math.max(rect.h, Math.ceil(fontSize * lineHeight)),
+      rotation: rotationFromTransform(style.transform),
+      z,
+      text,
+      style: {
+        fontFamily: style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize,
+        fontWeight: fontWeightNumber(style.fontWeight),
+        lineHeight,
+        color: style.color || "#111827",
+        textAlign: textAlignValue(style.textAlign)
+      }
+    };
+  }
+
+  function pseudoElementFromNode(doc, node, pseudo, pageRect, pageNumber, z) {
+    const style = doc.defaultView.getComputedStyle(node, pseudo);
+    if (!style || !isVisibleStyle(style)) return null;
+    const text = cssPseudoContentText(style.content, node);
+    const hasBox = style.backgroundImage !== "none"
+      || !isTransparent(style.backgroundColor)
+      || firstBorderWidth(style) > 0;
+    if (!text && !hasBox) return null;
+
+    const parentRect = node.getBoundingClientRect();
+    const fontSize = parseFloat(style.fontSize) || 16;
+    const lineHeightPX = style.lineHeight === "normal" ? fontSize * 1.2 : parseFloat(style.lineHeight) || fontSize * 1.2;
+    const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    const width = style.width === "auto"
+      ? Math.max(8, Math.min(parentRect.width, text ? text.length * fontSize * 0.62 + paddingX : parentRect.width))
+      : Math.max(1, parseFloat(style.width) || parentRect.width);
+    const height = style.height === "auto"
+      ? Math.max(8, text ? lineHeightPX + paddingY : Math.min(parentRect.height, lineHeightPX + paddingY))
+      : Math.max(1, parseFloat(style.height) || parentRect.height);
+
+    let left = parentRect.left;
+    let top = parentRect.top;
+    if (style.position === "absolute" || style.position === "fixed") {
+      if (style.left !== "auto") left = parentRect.left + (parseFloat(style.left) || 0);
+      else if (style.right !== "auto") left = parentRect.right - (parseFloat(style.right) || 0) - width;
+      else if (pseudo === "::after") left = parentRect.right - width;
+
+      if (style.top !== "auto") top = parentRect.top + (parseFloat(style.top) || 0);
+      else if (style.bottom !== "auto") top = parentRect.bottom - (parseFloat(style.bottom) || 0) - height;
+    } else if (pseudo === "::after") {
+      left = Math.max(parentRect.left, parentRect.right - width);
+    }
+
+    const rect = {
+      x: Math.round(left - pageRect.left),
+      y: Math.round(top - pageRect.top),
+      w: Math.round(width),
+      h: Math.round(height)
+    };
+    if (rect.w < 1 || rect.h < 1) return null;
+
+    if (text) {
+      const lineHeight = Math.max(0.8, lineHeightPX / fontSize);
+      return {
+        id: uniqueElementId(`p${pageNumber}-${nodeNameSlug(node)}-${pseudo.slice(2)}-text`, z),
+        type: "text",
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: Math.max(rect.h, Math.ceil(fontSize * lineHeight)),
+        rotation: rotationFromTransform(style.transform),
+        z,
+        text,
+        style: {
+          fontFamily: style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize,
+          fontWeight: fontWeightNumber(style.fontWeight),
+          lineHeight,
+          color: style.color || "#111827",
+          textAlign: textAlignValue(style.textAlign)
+        }
+      };
+    }
+
+    return {
+      id: uniqueElementId(`p${pageNumber}-${nodeNameSlug(node)}-${pseudo.slice(2)}-box`, z),
+      type: "rect",
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h,
+      rotation: rotationFromTransform(style.transform),
+      z,
+      style: {
+        fill: cssBackground(style),
+        stroke: firstBorderColor(style),
+        strokeWidth: firstBorderWidth(style),
+        radius: parseFloat(style.borderTopLeftRadius) || 0
+      }
+    };
+  }
+
+  function roundedRect(rect, parentRect) {
+    return {
+      x: Math.round(rect.left - parentRect.left),
+      y: Math.round(rect.top - parentRect.top),
+      w: Math.round(rect.width),
+      h: Math.round(rect.height)
+    };
+  }
+
+  function isVisibleStyle(style) {
+    return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01;
+  }
+
+  function cssBackground(style) {
+    if (style.backgroundImage && style.backgroundImage !== "none") return style.backgroundImage;
+    return isTransparent(style.backgroundColor) ? "transparent" : style.backgroundColor;
+  }
+
+  function isTransparent(color) {
+    return !color || color === "transparent" || color === "rgba(0, 0, 0, 0)";
+  }
+
+  function firstBorderWidth(style) {
+    return parseFloat(style.borderTopWidth) || parseFloat(style.borderRightWidth) || parseFloat(style.borderBottomWidth) || parseFloat(style.borderLeftWidth) || 0;
+  }
+
+  function firstBorderColor(style) {
+    return [style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor].find((color) => !isTransparent(color)) || "transparent";
+  }
+
+  function fontWeightNumber(value) {
+    if (value === "bold") return 700;
+    if (value === "normal") return 400;
+    return parseFloat(value) || 400;
+  }
+
+  function textAlignValue(value) {
+    if (value === "center" || value === "right") return value;
+    return "left";
+  }
+
+  function normalizedText(node) {
+    if (node.matches("h1") && node.children.length) {
+      return [...node.children].map((child) => child.textContent.trim()).filter(Boolean).join("\n");
+    }
+    return node.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  function cssPseudoContentText(value, node) {
+    if (!value || value === "none" || value === "normal") return "";
+    const attr = String(value).match(/^attr\(([^)]+)\)$/i);
+    if (attr) return (node.getAttribute(attr[1].trim()) || "").trim();
+    const quoted = String(value).match(/^["']([\s\S]*)["']$/);
+    if (!quoted) return "";
+    return quoted[1]
+      .replace(/\\A/gi, "\n")
+      .replace(/\\([0-9a-f]{1,6})\s?/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function nodeNameSlug(node) {
+    const className = [...node.classList || []].slice(0, 2).join("-");
+    const raw = className || node.id || node.tagName.toLowerCase();
+    return raw.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "element";
+  }
+
+  function uniqueElementId(base, index) {
+    return `${base}-${index}`;
+  }
+
+  function rotationFromTransform(transform) {
+    if (!transform || transform === "none") return 0;
+    const match = transform.match(/^matrix\(([^)]+)\)$/);
+    if (!match) return 0;
+    const [a, b] = match[1].split(",").map((value) => parseFloat(value.trim()));
+    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+  }
+
+  function withBaseElement(html, baseHref) {
+    if (!baseHref) return html;
+    const base = `<base data-chiselo-base href="${escapeHTML(baseHref)}">`;
+    if (/<head[\s>]/i.test(html)) {
+      return html.replace(/<head([^>]*)>/i, `<head$1>${base}`);
+    }
+    return `${base}${html}`;
+  }
+
+  function decodeBase64(base64) {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function exportHTML() {
+    if (editorMode === "html") return exportDirectHTML();
+
+    const canvas = deck.canvas;
+    const htmlSlides = deck.slides.map((slide, index) => {
+      const elements = [...slide.elements].sort((a, b) => a.z - b.z);
+      const htmlElements = elements.map(staticElementHTML).join("\n");
+      return `  <section class="slide${index < deck.slides.length - 1 ? " page-break" : ""}" aria-label="${escapeHTML(slide.title || `Slide ${index + 1}`)}">
+${htmlElements}
+  </section>`;
+    }).join("\n");
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHTML(deck.slides[0]?.title || "Chiselo Deck")}</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { display: grid; justify-items: center; gap: 24px; padding: 24px; background: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    .slide { position: relative; width: ${canvas.width}px; height: ${canvas.height}px; overflow: hidden; background: ${canvas.background || "#ffffff"}; box-shadow: 0 20px 60px rgba(15,23,42,.16); }
+    .element { position: absolute; overflow: hidden; transform-origin: center center; }
+    .text-content { width: 100%; height: 100%; white-space: pre-wrap; overflow-wrap: break-word; }
+    .shape-content { width: 100%; height: 100%; }
+    .image-content { width: 100%; height: 100%; display: block; }
+    @media print {
+      body { display: block; padding: 0; background: white; }
+      .slide { box-shadow: none; margin: 0; }
+      .page-break { break-after: page; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+${htmlSlides}
+</body>
+</html>`;
+  }
+
+  function exportDirectHTML() {
+    const doc = directFrame?.contentDocument;
+    if (!doc) return "";
+
+    const cloneRoot = doc.documentElement.cloneNode(true);
+    for (const node of cloneRoot.querySelectorAll("[data-chiselo-style], base[data-chiselo-base]")) {
+      node.remove();
+    }
+    for (const node of [cloneRoot, ...cloneRoot.querySelectorAll("*")]) {
+      stripChiseloAttributes(node);
+    }
+    for (const node of cloneRoot.querySelectorAll("[contenteditable]")) {
+      node.removeAttribute("contenteditable");
+    }
+    for (const node of cloneRoot.querySelectorAll("[spellcheck]")) {
+      node.removeAttribute("spellcheck");
+    }
+
+    return `${directHadDoctype ? "<!doctype html>\n" : ""}${cloneRoot.outerHTML}`;
+  }
+
+  function stripChiseloAttributes(node) {
+    for (const attribute of [...node.attributes]) {
+      if (attribute.name.startsWith("data-chiselo")) {
+        node.removeAttribute(attribute.name);
+      }
+    }
+  }
+
+  function getHTMLSummary() {
+    const doc = directFrame?.contentDocument;
+    if (!doc) return { mode: editorMode, elementCount: 0, exportedLength: 0 };
+    const elements = [...doc.querySelectorAll("[data-chiselo-id]")];
+    return {
+      mode: editorMode,
+      width: directCanvas().width,
+      height: directCanvas().height,
+      elementCount: elements.length,
+      textElementCount: elements.filter((node) => normalizedText(node).length > 0).length,
+      exportedLength: exportDirectHTML().length
+    };
+  }
+
+  function getImportDiagnostics() {
+    const doc = directFrame?.contentDocument;
+    if (!doc) {
+      return {
+        mode: editorMode,
+        imageCount: 0,
+        brokenImages: 0,
+        embeddedImages: 0,
+        mediaCount: 0,
+        brokenMedia: 0,
+        svgCount: 0,
+        tableCount: 0,
+        spanTableCount: 0,
+        cleanExport: true,
+        textOverflowCount: 0,
+        outOfBoundsCount: 0,
+        overlapCount: 0,
+        issues: []
+      };
+    }
+
+    const images = [...doc.querySelectorAll("img")];
+    const media = [...doc.querySelectorAll("video, audio")];
+    const tables = [...doc.querySelectorAll("table")];
+    const exported = exportDirectHTML();
+    const issues = [];
+    const brokenImageNodes = images.filter((image) => image.dataset.chiseloResourceState === "broken");
+    const brokenMediaNodes = media.filter((node) => node.dataset.chiseloResourceState === "broken");
+    const spanTables = tables.filter((table) => table.querySelector("[rowspan], [colspan]"));
+    const cleanExport = !exported.includes("data-chiselo");
+
+    for (const image of brokenImageNodes) {
+      addDiagnosticIssue(issues, {
+        kind: "broken-image",
+        severity: "error",
+        title: "图片断链",
+        detail: diagnosticResourceDetail(image, "图片资源无法加载"),
+        elementId: ensureDirectId(image)
+      });
+    }
+
+    for (const node of brokenMediaNodes) {
+      addDiagnosticIssue(issues, {
+        kind: "broken-media",
+        severity: "error",
+        title: "媒体断链",
+        detail: diagnosticResourceDetail(node, "音视频资源无法加载"),
+        elementId: ensureDirectId(node)
+      });
+    }
+
+    if (spanTables.length > 0) {
+      addDiagnosticIssue(issues, {
+        kind: "span-table",
+        severity: "warning",
+        title: "合并单元格",
+        detail: `${spanTables.length} 个表格含 rowspan/colspan，PPTX 映射可能需要复核`,
+        elementId: ensureDirectId(spanTables[0])
+      });
+    }
+
+    if (!cleanExport) {
+      addDiagnosticIssue(issues, {
+        kind: "dirty-export",
+        severity: "error",
+        title: "导出不干净",
+        detail: "HTML 中仍包含编辑器临时标记"
+      });
+    }
+
+    const layoutDiagnostics = collectLayoutDiagnostics(doc, issues);
+    return {
+      mode: editorMode,
+      imageCount: images.length,
+      brokenImages: brokenImageNodes.length,
+      embeddedImages: images.filter((image) => (image.getAttribute("src") || "").startsWith("data:")).length,
+      mediaCount: media.length,
+      brokenMedia: brokenMediaNodes.length,
+      svgCount: doc.querySelectorAll("svg").length + images.filter((image) => (image.getAttribute("src") || "").startsWith("data:image/svg")).length,
+      tableCount: tables.length,
+      spanTableCount: spanTables.length,
+      cleanExport,
+      textOverflowCount: layoutDiagnostics.textOverflowCount,
+      outOfBoundsCount: layoutDiagnostics.outOfBoundsCount,
+      overlapCount: layoutDiagnostics.overlapCount,
+      issues
+    };
+  }
+
+  function collectLayoutDiagnostics(doc, issues) {
+    return {
+      textOverflowCount: collectTextOverflowIssues(doc, issues),
+      outOfBoundsCount: collectOutOfBoundsIssues(doc, issues),
+      overlapCount: collectOverlapIssues(doc, issues)
+    };
+  }
+
+  function collectTextOverflowIssues(doc, issues) {
+    const selector = `${DIRECT_TEXT_BLOCK_SELECTOR},${DIRECT_SAFE_INLINE_SELECTOR},div,label,a,button`;
+    const candidates = [...doc.querySelectorAll(selector)].slice(0, MAX_HTML_DIAGNOSTIC_NODES);
+    let count = 0;
+
+    for (const node of candidates) {
+      if (!isTextOverflowDiagnosticCandidate(node)) continue;
+      if (!hasTextOverflow(node)) continue;
+
+      count += 1;
+      addDiagnosticIssue(issues, {
+        kind: "text-overflow",
+        severity: "error",
+        title: "文字溢出",
+        detail: truncateDiagnosticText(normalizedText(node), "文本超出当前框"),
+        elementId: ensureDirectId(node)
+      });
+    }
+
+    return count;
+  }
+
+  function collectOutOfBoundsIssues(doc, issues) {
+    const nodes = diagnosticLayoutNodes(doc);
+    let count = 0;
+
+    for (const node of nodes) {
+      const frame = diagnosticFrameForNode(node);
+      if (!frame) continue;
+      const rect = directNodeRect(node);
+      const overflow = rectOverflowAmount(rect, frame);
+      if (overflow <= 4) continue;
+
+      count += 1;
+      addDiagnosticIssue(issues, {
+        kind: "out-of-bounds",
+        severity: "error",
+        title: "元素越界",
+        detail: `${diagnosticNodeLabel(node)} 超出可视容器 ${Math.round(overflow)}px`,
+        elementId: ensureDirectId(node)
+      });
+    }
+
+    return count;
+  }
+
+  function collectOverlapIssues(doc, issues) {
+    const nodes = diagnosticLayoutNodes(doc)
+      .filter((node) => isOverlapDiagnosticNode(node))
+      .slice(0, 90);
+    let count = 0;
+    const reported = new Set();
+
+    for (let index = 0; index < nodes.length; index += 1) {
+      const first = nodes[index];
+      const firstRect = directNodeRect(first);
+      for (let nextIndex = index + 1; nextIndex < nodes.length; nextIndex += 1) {
+        const second = nodes[nextIndex];
+        if (first.contains(second) || second.contains(first)) continue;
+        if (!shouldCompareOverlap(first, second)) continue;
+
+        const secondRect = directNodeRect(second);
+        const overlap = rectIntersection(firstRect, secondRect);
+        if (!overlap) continue;
+
+        const smallerArea = Math.min(rectArea(firstRect), rectArea(secondRect));
+        const overlapRatio = rectArea(overlap) / Math.max(1, smallerArea);
+        if (overlapRatio < 0.48 || rectArea(overlap) < 320) continue;
+
+        count += 1;
+        const key = `${ensureDirectId(first)}:${ensureDirectId(second)}`;
+        if (reported.has(key)) continue;
+        reported.add(key);
+        addDiagnosticIssue(issues, {
+          kind: "overlap",
+          severity: "warning",
+          title: "元素重叠",
+          detail: `${diagnosticNodeLabel(first)} 与 ${diagnosticNodeLabel(second)} 重叠`,
+          elementId: first.dataset.chiseloId
+        });
+      }
+    }
+
+    return count;
+  }
+
+  function addDiagnosticIssue(issues, issue) {
+    if (issues.length >= MAX_HTML_DIAGNOSTIC_ISSUES) return;
+    issues.push({
+      id: `${issue.kind}-${issues.length + 1}`,
+      kind: issue.kind,
+      severity: issue.severity || "warning",
+      title: issue.title,
+      detail: issue.detail,
+      elementId: issue.elementId || null
+    });
+  }
+
+  function diagnosticResourceDetail(node, fallback) {
+    const src = node.getAttribute("src") || node.getAttribute("href") || "";
+    const label = node.getAttribute("alt") || node.getAttribute("aria-label") || src;
+    return truncateDiagnosticText(label, fallback);
+  }
+
+  function isTextOverflowDiagnosticCandidate(node) {
+    if (!node || node.matches?.("html,body,script,style,svg")) return false;
+    if (!isDirectNodeVisible(node) || isDecorativeDirectNode(node)) return false;
+    if (!directNodeAllowsTextEdit(node) || !normalizedText(node)) return false;
+
+    const tag = node.tagName.toLowerCase();
+    if (["div", "section", "article", "header", "footer", "aside"].includes(tag) && !hasMeaningfulDirectText(node)) {
+      return false;
+    }
+
+    return node.clientWidth > 0 && node.clientHeight > 0;
+  }
+
+  function hasTextOverflow(node) {
+    const tolerance = 2;
+    return node.scrollWidth > node.clientWidth + tolerance || node.scrollHeight > node.clientHeight + tolerance;
+  }
+
+  function diagnosticLayoutNodes(doc) {
+    const nodes = [...doc.querySelectorAll("[data-chiselo-id]")]
+      .slice(0, MAX_HTML_DIAGNOSTIC_NODES)
+      .filter((node) => {
+        if (!node || node.matches?.("html,body,script,style,meta,link,title,defs")) return false;
+        if (!isDirectNodeVisible(node) || isDecorativeDirectNode(node)) return false;
+        const rect = directNodeRect(node);
+        if (rect.w < 8 || rect.h < 8) return false;
+        const frame = diagnosticFrameNodeFor(node);
+        return !frame || frame !== node;
+      });
+
+    return uniqueElements(nodes);
+  }
+
+  function diagnosticFrameForNode(node) {
+    const frameNode = diagnosticFrameNodeFor(node);
+    if (frameNode) {
+      const rect = directNodeRect(frameNode);
+      const width = frameNode.clientWidth || rect.w;
+      const height = frameNode.clientHeight || rect.h;
+      return { x: rect.x, y: rect.y, w: Math.max(1, width), h: Math.max(1, height) };
+    }
+
+    return null;
+  }
+
+  function diagnosticFrameNodeFor(node) {
+    return fixedPageFrameNodeFor(node) || clippingFrameNodeFor(node);
+  }
+
+  function fixedPageFrameNodeFor(node) {
+    const page = node.closest?.(DIRECT_FIXED_FRAME_SELECTOR);
+    if (!page || page === node || page === node.ownerDocument.body || page === node.ownerDocument.documentElement) return null;
+    return page;
+  }
+
+  function clippingFrameNodeFor(node) {
+    const doc = node.ownerDocument;
+    let parent = node.parentElement;
+    while (parent && parent !== doc.body && parent !== doc.documentElement) {
+      if (isDiagnosticClipFrame(parent)) return parent;
+      parent = parent.parentElement;
+    }
+    return null;
+  }
+
+  function isDiagnosticClipFrame(node) {
+    if (!node || node.matches?.("html,body")) return false;
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    const overflow = `${style.overflowX} ${style.overflowY}`.toLowerCase();
+    if (!/(hidden|clip)/.test(overflow)) return false;
+
+    const rect = node.getBoundingClientRect();
+    return rect.width >= 80 && rect.height >= 40;
+  }
+
+  function rectOverflowAmount(rect, frame) {
+    return Math.max(
+      frame.x - rect.x,
+      frame.y - rect.y,
+      rect.x + rect.w - (frame.x + frame.w),
+      rect.y + rect.h - (frame.y + frame.h),
+      0
+    );
+  }
+
+  function isOverlapDiagnosticNode(node) {
+    const tag = node.tagName.toLowerCase();
+    if (["td", "th", "tr", "thead", "tbody", "tfoot"].includes(tag)) return false;
+    if (!diagnosticFrameNodeFor(node) && !isPositionedDiagnosticNode(node)) return false;
+    if (normalizedText(node)) return true;
+    if (node.matches?.("img,picture,svg,canvas,video,table,button,a")) return true;
+    return false;
+  }
+
+  function isPositionedDiagnosticNode(node) {
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    return style.position === "absolute" || style.position === "fixed" || style.position === "sticky" || style.transform !== "none";
+  }
+
+  function shouldCompareOverlap(first, second) {
+    const firstFrame = diagnosticFrameNodeFor(first);
+    const secondFrame = diagnosticFrameNodeFor(second);
+    if (firstFrame || secondFrame) return firstFrame === secondFrame;
+    return isPositionedDiagnosticNode(first) && isPositionedDiagnosticNode(second);
+  }
+
+  function rectIntersection(first, second) {
+    const left = Math.max(first.x, second.x);
+    const top = Math.max(first.y, second.y);
+    const right = Math.min(first.x + first.w, second.x + second.w);
+    const bottom = Math.min(first.y + first.h, second.y + second.h);
+    if (right <= left || bottom <= top) return null;
+    return { x: left, y: top, w: right - left, h: bottom - top };
+  }
+
+  function rectArea(rect) {
+    return Math.max(0, rect.w) * Math.max(0, rect.h);
+  }
+
+  function diagnosticNodeLabel(node) {
+    const tag = node.tagName.toLowerCase();
+    const id = node.id ? `#${node.id}` : "";
+    const text = normalizedText(node);
+    if (text) return `${tag}${id}「${truncateDiagnosticText(text, "")}」`;
+    const alt = node.getAttribute("alt") || node.getAttribute("aria-label") || "";
+    if (alt) return `${tag}${id}「${truncateDiagnosticText(alt, "")}」`;
+    return `${tag}${id || ""}`;
+  }
+
+  function truncateDiagnosticText(value, fallback) {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    if (!text) return fallback;
+    return text.length > 34 ? `${text.slice(0, 33)}...` : text;
+  }
+
+  function selectHTML(selector, options = {}) {
+    if (editorMode !== "html") return null;
+    const node = directFrame?.contentDocument?.querySelector(selector);
+    if (!node) return null;
+    if (options?.additive) {
+      setDirectSelection([...directSelectionNodes(), node], node);
+    } else {
+      selectDirectNode(node);
+    }
+    return selectedElement();
+  }
+
+  function addHTMLToSelection(selector) {
+    return selectHTML(selector, { additive: true });
+  }
+
+  function selectHTMLById(id, additive = false) {
+    if (editorMode !== "html") return null;
+    const escapedId = cssEscape(id);
+    const node = directFrame?.contentDocument?.querySelector(`[data-chiselo-id="${escapedId}"]`);
+    if (!node) return null;
+    if (additive) {
+      setDirectSelection([...directSelectionNodes(), node], node);
+    } else {
+      selectDirectNode(node);
+    }
+    return selectedElement();
+  }
+
+  function selectHTMLAtPoint(x, y, additive = false) {
+    if (editorMode !== "html") return null;
+    const doc = directFrame?.contentDocument;
+    if (!doc) return null;
+
+    const target = doc.elementFromPoint(x, y) || doc.body;
+    const node = directSelectionTargetFromEvent({ target, clientX: x, clientY: y });
+    if (!node) return null;
+
+    if (additive) {
+      setDirectSelection([...directSelectionNodes(), node], node);
+    } else {
+      selectDirectNode(node);
+    }
+    return selectedElement();
+  }
+
+  function cssEscape(value) {
+    if (window.CSS?.escape) return CSS.escape(value);
+    return String(value).replace(/["\\]/g, "\\$&");
+  }
+
+  function setSelectedHTMLText(text) {
+    if (editorMode !== "html" || !directSelectedNode) return null;
+    pushHistory();
+    directSelectedNode.textContent = text;
+    updateSelectionBox();
+    scheduleHTMLTreeChanged();
+    postSelectionChanged();
+    return selectedElement();
+  }
+
+  function staticElementHTML(element) {
+    const base = [
+      `left:${element.x}px`,
+      `top:${element.y}px`,
+      `width:${element.w}px`,
+      `height:${element.h}px`,
+      `z-index:${element.z}`,
+      `transform:rotate(${element.rotation || 0}deg)`
+    ].join(";");
+
+    if (element.type === "text") {
+      const style = element.style || {};
+      const textStyle = [
+        `font-family:${style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif"}`,
+        `font-size:${style.fontSize || 28}px`,
+        `font-weight:${style.fontWeight || 400}`,
+        `line-height:${style.lineHeight || 1.2}`,
+        `color:${style.color || "#111827"}`,
+        `text-align:${style.textAlign || "left"}`
+      ].join(";");
+
+      return `    <div class="element" style="${base}"><div class="text-content" style="${textStyle}">${escapeHTML(element.text || "")}</div></div>`;
+    }
+
+    if (element.type === "image") {
+      const style = element.style || {};
+      const imageStyle = [
+        "width:100%",
+        "height:100%",
+        "display:block",
+        "object-fit:cover",
+        `border:${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`,
+        `border-radius:${style.radius || 0}px`
+      ].join(";");
+      return `    <div class="element" style="${base}"><img class="image-content" src="${escapeHTML(element.imageSource || "")}" alt="${escapeHTML(element.imageAlt || "")}" style="${imageStyle}"></div>`;
+    }
+
+    const style = element.style || {};
+    const shapeStyle = [
+      `background:${style.fill || "#ffffff"}`,
+      `border:${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`,
+      `border-radius:${style.radius || 0}px`
+    ].join(";");
+
+    return `    <div class="element" style="${base}"><div class="shape-content" style="${shapeStyle}"></div></div>`;
+  }
+
+  function escapeHTML(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.target === stage || event.target === surface || event.target === layer) {
+      clearSelection();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    fitStage({ preserveScale: editorMode === "html" });
+    scheduleSelectionBoxUpdate();
+  });
+  viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
+
+  function handleEditorKeydown(event) {
+    if (isEditingText()) return;
+
+    if (editorMode === "html" && event.key === "Enter" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      const node = directTextEditTarget(directSelectedNode);
+      if (node) {
+        event.preventDefault();
+        beginDirectTextEdit(node);
+      }
+      return;
+    }
+
+    const step = event.shiftKey ? 10 : 1;
+    const nudgeMap = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step]
+    };
+
+    if (event.key in nudgeMap) {
+      event.preventDefault();
+      const [dx, dy] = nudgeMap[event.key];
+      nudgeSelected(dx, dy);
+      return;
+    }
+
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      deleteSelected();
+      return;
+    }
+
+    if (!(event.metaKey || event.ctrlKey)) return;
+    if (event.key.toLowerCase() === "z" && event.shiftKey) {
+      event.preventDefault();
+      redo();
+    } else if (event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      undo();
+    }
+  }
+
+  window.addEventListener("keydown", handleEditorKeydown);
+
+  function setBackdropStyle(style) {
+    const allowed = new Set(["clean", "grid", "dots"]);
+    document.documentElement.dataset.backdrop = allowed.has(style) ? style : "clean";
+  }
+
+  function isEditingText() {
+    const active = document.activeElement;
+    if (active?.isContentEditable || active?.matches?.("input, textarea")) return true;
+
+    const directActive = directFrame?.contentDocument?.activeElement;
+    return Boolean(directActive?.isContentEditable || directActive?.matches?.("input, textarea"));
+  }
+
+  window.ChiseloEditor = {
+    addHTMLToSelection,
+    command,
+    exportHTML,
+    getDeck: () => clone(deck),
+    clearDirty,
+    getHTMLTree: buildHTMLTree,
+    getHTMLSummary,
+    getImportDiagnostics,
+    getViewportState: () => ({
+      scale,
+      fitScale,
+      userZoom,
+      viewportScrollLeft: viewport.scrollLeft,
+      viewportScrollTop: viewport.scrollTop,
+      stageWidth: stage.offsetWidth,
+      stageHeight: stage.offsetHeight,
+      stageOuterWidth: stageOuter.offsetWidth,
+      stageOuterHeight: stageOuter.offsetHeight
+    }),
+    getSelection: () => selectedElement(),
+    importHTMLFromBase64,
+    loadDeck,
+    loadDeckFromBase64,
+    newDeck,
+    openHTMLFromBase64,
+    selectElementById,
+    selectSlide,
+    selectHTML,
+    selectHTMLById,
+    selectHTMLAtPoint,
+    replaceSelectedImageFromBase64,
+    replaceSelectedImageSrc,
+    setBackdropStyle,
+    setSelectedHTMLText,
+    updateElement
+  };
+
+  setBackdropStyle("clean");
+  render();
+  postSelectionChanged({ immediate: true });
+  postMessage("bridgeReady");
+})();

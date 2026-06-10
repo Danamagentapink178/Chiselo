@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+echo "==> Checking for local-only paths and old project names"
+LOCAL_PATH_OR_OLD_NAME_PATTERN="/Users/[^[:space:]'\"]+|/var/folders/|TemporaryItems|Documents/Codex|Htmlhunter|htmlhunter|HTMLHUNTER"
+if rg -n "$LOCAL_PATH_OR_OLD_NAME_PATTERN" \
+  -g '!.git/**' \
+  -g '!.build/**' \
+  -g '!outputs/**' \
+  -g '!scripts/release-preflight.sh' \
+  .; then
+  echo "Found local-only paths or old project names." >&2
+  exit 1
+fi
+
+echo "==> Swift build"
+node scripts/generate-design-tokens.mjs
+swift build
+
+echo "==> JavaScript syntax"
+node --check scripts/generate-design-tokens.mjs
+node --check Sources/Chiselo/Resources/Editor/editor.js
+node --check scripts/generate-digital-transformation-slides.mjs
+
+echo "==> Sample deck schema"
+node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide
+
+echo "==> Core editor smoke tests"
+swift scripts/import-smoke-test.swift
+swift scripts/bridge-message-efficiency-test.swift
+swift scripts/html-delivery-diagnostics-test.swift
+swift scripts/html-diagnostics-webpage-flow-test.swift
+swift scripts/deck-gesture-smoothness-test.swift
+swift scripts/direct-html-canvas-interaction-test.swift
+swift scripts/import-adapter-test.swift
+swift scripts/precision-adjustment-test.swift
+swift scripts/five-slide-acceptance-test.swift
+
+echo "==> Demo acceptance"
+node scripts/generate-digital-transformation-slides.mjs
+swift scripts/digital-transformation-acceptance-test.swift
+
+echo "==> Visual QA"
+swift scripts/html-slide-visual-qa.swift outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-visual-qa
+swift scripts/html-slide-visual-qa.swift outputs/chiselo-five-slide-demo-edited.html outputs/chiselo-five-slide-visual-qa
+
+echo "==> Export validation"
+EXPORT_TEST_BIN="/tmp/chiselo-export-preflight"
+swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-html-high-fidelity.swift -o "$EXPORT_TEST_BIN"
+"$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides.pdf pdf
+"$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/digital-transformation-10-slides-editable.pptx editable-pptx
+if "$EXPORT_TEST_BIN" outputs/digital-transformation-10-slides-edited.html outputs/should-not-exist.pptx typo-pptx 2>/dev/null; then
+  echo "Export CLI accepted an invalid format." >&2
+  exit 1
+fi
+ORIENTATION_TEST_BIN="/tmp/chiselo-export-orientation-test"
+swiftc Sources/Chiselo/HTMLRenderExporter.swift scripts/export-orientation-test.swift -o "$ORIENTATION_TEST_BIN"
+"$ORIENTATION_TEST_BIN"
+scripts/pptx-design-absorption-test.sh
+scripts/editable-pptx-export-test.sh
+
+echo "Preflight OK"

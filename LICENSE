@@ -1,0 +1,73 @@
+Chiselo Personal Non-Commercial License 1.0
+
+Copyright (c) 2026 Chiselo contributors.
+
+This license governs use of the Chiselo source code, application binaries,
+documentation, examples, scripts, and related project materials.
+
+1. Permission
+
+You may use, copy, modify, run, study, and share Chiselo only for personal,
+educational, research, evaluation, or non-commercial hobby purposes.
+
+2. Non-Commercial Restriction
+
+Commercial use is not permitted.
+
+Commercial use includes, but is not limited to:
+
+- selling, sublicensing, renting, or leasing Chiselo;
+- offering Chiselo as part of a paid product or paid service;
+- using Chiselo to provide paid consulting, design, document, presentation,
+  website, automation, or layout services;
+- using Chiselo inside a company, agency, studio, institution, or organization
+  for business operations or revenue-generating work;
+- integrating Chiselo into a commercial product, SaaS product, hosted service,
+  internal business platform, or proprietary workflow;
+- distributing modified binaries or hosted versions for commercial advantage;
+- using Chiselo or substantial parts of it to train, fine-tune, evaluate, or
+  improve a commercial AI system or commercial dataset.
+
+If you want to use Chiselo commercially, you must obtain a separate written
+commercial license from the copyright holder. No commercial license is granted
+by this license.
+
+3. Redistribution
+
+You may share unmodified or modified copies for permitted non-commercial uses
+only if you:
+
+- keep this license file;
+- keep copyright and attribution notices;
+- clearly mark significant modifications;
+- license your modifications under this same license.
+
+4. Contributions
+
+By submitting code, documentation, examples, issues, pull requests, or other
+materials to this project, you agree that your contribution may be distributed
+under this license. You confirm that you have the right to submit the
+contribution.
+
+5. No Trademark Permission
+
+This license does not grant permission to use the names "Chiselo" or
+"Chisel your HTML" as trademarks, product names, service names, or branding for
+another project without written permission.
+
+6. No Warranty
+
+Chiselo is provided "as is", without warranty of any kind. The authors and
+contributors are not liable for any claim, damage, data loss, business loss, or
+other liability arising from use of Chiselo.
+
+7. Termination
+
+Your rights under this license terminate automatically if you violate its
+terms. After termination, you must stop using and distributing Chiselo and
+delete any copies that are not otherwise lawfully retained.
+
+8. Not Open Source
+
+Because this license restricts commercial use, it is a source-available
+non-commercial license and is not an OSI-approved open source license.
