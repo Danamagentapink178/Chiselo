@@ -21,3 +21,4 @@ Initial public preview preparation.
 - Added a saved GitHub update workflow and reusable push script.
 - Configured the update push script to use `~/.gh` for GitHub CLI state.
 - Added stronger GitHub search keywords for HTML editing and html2ppt/html2pptx queries.
+- Cleaned the public repository structure by moving screenshots to `assets/`, moving schema validation to `scripts/`, and removing AI prompt skill folders from the root.

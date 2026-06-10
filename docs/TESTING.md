@@ -6,7 +6,7 @@
 swift build
 node --check Sources/Chiselo/Resources/Editor/editor.js
 node --check scripts/generate-digital-transformation-slides.mjs
-node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide
+node scripts/validate-deck.mjs examples/sample.aislide
 ```
 
 ## Release Preflight

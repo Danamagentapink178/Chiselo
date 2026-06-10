@@ -30,7 +30,7 @@ The first public preview is prepared for GitHub Releases as `Chiselo-0.1.0.dmg`.
 
 Release notes are in [docs/RELEASE_NOTES_0.1.0_PREVIEW.md](docs/RELEASE_NOTES_0.1.0_PREVIEW.md). Publishing steps are in [docs/GITHUB_PUBLISHING.md](docs/GITHUB_PUBLISHING.md).
 
-![Chiselo editor preview](design-audit/chiselo-ui-system-2026-06-09/02-editor-html-open.png)
+![Chiselo editor preview](assets/chiselo-editor-preview.png)
 
 ## License
 
@@ -180,9 +180,9 @@ PPTX is one delivery target for users who need object-level editability outside 
 ```text
 Sources/Chiselo/                  macOS SwiftUI app and exporter
 Sources/Chiselo/Resources/Editor/ WKWebView HTML editor
+assets/                           public screenshots and repository media
 scripts/                          QA, export, icon, demo, and packaging scripts
 examples/                         sample .aislide and HTML fixtures
-ai-skills/                        Codex/Claude layout skills
 docs/                             architecture, usage, testing, release notes
 ```
 

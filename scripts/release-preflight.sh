@@ -26,7 +26,7 @@ node --check Sources/Chiselo/Resources/Editor/editor.js
 node --check scripts/generate-digital-transformation-slides.mjs
 
 echo "==> Sample deck schema"
-node ai-skills/shared/scripts/validate-deck.mjs examples/sample.aislide
+node scripts/validate-deck.mjs examples/sample.aislide
 
 echo "==> Core editor smoke tests"
 swift scripts/import-smoke-test.swift
