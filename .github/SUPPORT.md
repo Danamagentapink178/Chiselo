@@ -9,6 +9,6 @@ For public help:
 - attach a minimal HTML file when the issue is about layout editing;
 - include screenshots for UI or export quality problems.
 
-For private security concerns, see [SECURITY.md](SECURITY.md).
+For private security concerns, see [SECURITY.md](./SECURITY.md).
 
 Commercial support is not available under this license.

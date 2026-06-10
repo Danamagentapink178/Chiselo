@@ -17,7 +17,7 @@ The target visual language is a light Material-inspired system:
 
 ## Current App Changes
 
-- Added shared design tokens in `design-tokens.json`, generated into `Chiselo/MaterialTheme.swift` for SwiftUI and `Chiselo/Resources/Editor/design-tokens.css` for the Web editor.
+- Added shared design tokens in `config/design-tokens.json`, generated into `Chiselo/MaterialTheme.swift` for SwiftUI and `Chiselo/Resources/Editor/design-tokens.css` for the Web editor.
 - Replaced the plain macOS toolbar with a branded Material toolbar using pill buttons and a mode capsule.
 - Restyled the left navigator with Material panel headers, elevated slide cards, and purple DOM labels.
 - Restyled the Inspector with a custom `MaterialGroupBoxStyle` so every control group becomes a white elevated component card.

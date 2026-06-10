@@ -2,7 +2,7 @@
 
 Thanks for helping Chiselo improve.
 
-Chiselo is a non-commercial, source-available project. By contributing, you agree that your contribution can be distributed under the [Chiselo Personal Non-Commercial License 1.0](LICENSE).
+Chiselo is a non-commercial, source-available project. By contributing, you agree that your contribution can be distributed under the [Chiselo Personal Non-Commercial License 1.0](../LICENSE).
 
 ## Ground Rules
 

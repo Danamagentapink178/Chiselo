@@ -112,7 +112,7 @@ swift run Chiselo
 
 ## Design Tokens
 
-Chiselo uses `design-tokens.json` as the single source for shared SwiftUI and Web editor theme values.
+Chiselo uses `config/design-tokens.json` as the single source for shared SwiftUI and Web editor theme values.
 
 After changing tokens, regenerate the derived files:
 
@@ -186,10 +186,13 @@ PPTX is one delivery target for users who need object-level editability outside 
 Chiselo/                  macOS SwiftUI app and exporter
 Chiselo/Resources/Editor/ WKWebView HTML editor
 assets/                           public screenshots and repository media
+config/                           design and packaging configuration
 scripts/                          QA, export, icon, demo, and packaging scripts
 examples/                         sample .aislide and HTML fixtures
 docs/                             architecture, usage, testing, release notes
 ```
+
+`Package.swift` is the Swift Package manifest. It tells `swift build` what the app target is, where the source lives, and which resources should be bundled, so it needs to stay at the repository root.
 
 ## Roadmap
 
@@ -205,6 +208,6 @@ Near-term priorities:
 
 ## Contributing
 
-Personal-use contributions are welcome under the same non-commercial license. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Personal-use contributions are welcome under the same non-commercial license. Please read [CONTRIBUTING.md](.github/CONTRIBUTING.md) first.
 
-For bugs and feature requests, use the GitHub issue templates. For private security concerns, see [SECURITY.md](SECURITY.md).
+For bugs and feature requests, use the GitHub issue templates. For private security concerns, see [SECURITY.md](.github/SECURITY.md).
