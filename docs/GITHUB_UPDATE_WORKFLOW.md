@@ -33,6 +33,14 @@ The script will:
 5. add the GitHub remote if missing;
 6. push the current branch to GitHub.
 
+The script stores GitHub CLI configuration in:
+
+```text
+~/.gh
+```
+
+This avoids local machines where `~/.config` has incorrect permissions.
+
 ## Full Release Push
 
 Before a bigger public release, run the full preflight:

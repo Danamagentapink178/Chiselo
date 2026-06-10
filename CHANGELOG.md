@@ -19,3 +19,4 @@ Initial public preview preparation.
 - Added first-preview release notes and a step-by-step GitHub publishing guide.
 - Added GitHub repository copy, creator note, discovery keywords, and star reminder.
 - Added a saved GitHub update workflow and reusable push script.
+- Configured the update push script to use `~/.gh` for GitHub CLI state.

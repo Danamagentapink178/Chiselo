@@ -200,6 +200,8 @@ scripts/push-github-update.sh "Describe this update"
 
 The saved workflow is in [GITHUB_UPDATE_WORKFLOW.md](GITHUB_UPDATE_WORKFLOW.md).
 
+On this machine, GitHub CLI configuration is stored in `~/.gh` because `~/.config` may not be writable.
+
 ## Common Problems
 
 `fatal: remote origin already exists`

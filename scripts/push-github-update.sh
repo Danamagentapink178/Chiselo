@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+export GH_CONFIG_DIR="${GH_CONFIG_DIR:-$HOME/.gh}"
+
 REMOTE_URL="${GITHUB_REPO_URL:-https://github.com/JunZhaoNathan/Chiselo.git}"
 COMMIT_MESSAGE="${1:-Update Chiselo}"
 
