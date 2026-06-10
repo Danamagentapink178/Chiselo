@@ -16,6 +16,12 @@ Search-friendly:
 A macOS visual editor for polishing AI-generated HTML and exporting clean HTML, PDF, and PPTX.
 ```
 
+Search-optimized:
+
+```text
+Visual HTML editor for AI-generated HTML: edit real HTML like Office/PPT, export clean HTML, PDF, PPTX/html2pptx. macOS.
+```
+
 ## About Text
 
 ```text
@@ -66,11 +72,18 @@ swiftui
 wkwebview
 html-editor
 ai-generated-html
+ai-html-editor
 visual-editor
 wysiwyg
 layout-editor
+html-layout-editor
 office-like
 ppt-like
+editable-html
+html-to-pdf
+html-to-pptx
+html2ppt
+html2pptx
 pdf-export
 pptx-export
 vibe-coding

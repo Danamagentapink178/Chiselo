@@ -56,6 +56,12 @@ Alternative shorter description:
 A macOS visual editor for polishing AI-generated HTML and exporting clean HTML, PDF, and PPTX.
 ```
 
+Search-optimized description:
+
+```text
+Visual HTML editor for AI-generated HTML: edit real HTML like Office/PPT, export clean HTML, PDF, PPTX/html2pptx. macOS.
+```
+
 About text:
 
 ```text
@@ -65,7 +71,7 @@ Chiselo helps you polish existing or AI-generated HTML with an Office-like visua
 Topics:
 
 ```text
-macos swiftui wkwebview html-editor ai-generated-html visual-editor wysiwyg layout-editor office-like ppt-like pdf-export pptx-export vibe-coding non-commercial source-available
+macos swiftui wkwebview html-editor ai-generated-html ai-html-editor visual-editor wysiwyg layout-editor html-layout-editor office-like ppt-like editable-html html-to-pdf html-to-pptx html2ppt html2pptx pdf-export pptx-export vibe-coding non-commercial source-available
 ```
 
 Star reminder for README or pinned issue:

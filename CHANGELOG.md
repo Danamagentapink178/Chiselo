@@ -20,3 +20,4 @@ Initial public preview preparation.
 - Added GitHub repository copy, creator note, discovery keywords, and star reminder.
 - Added a saved GitHub update workflow and reusable push script.
 - Configured the update push script to use `~/.gh` for GitHub CLI state.
+- Added stronger GitHub search keywords for HTML editing and html2ppt/html2pptx queries.

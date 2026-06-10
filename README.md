@@ -61,9 +61,9 @@ See [LICENSE](LICENSE). This is a non-commercial license and is not an OSI-appro
 - Export high-fidelity PDF by rendering each detected page/slide.
 - Export best-effort object-level PPTX with editable text boxes, shapes, tables, and image objects where possible.
 
-## Keywords
+## Search Keywords
 
-AI-generated HTML editor, visual HTML editor, WYSIWYG HTML layout editor, Office-like HTML editor, PPT-like HTML editor, macOS HTML editor, WKWebView editor, HTML to PDF, HTML to PPTX, source-available non-commercial software, vibe coding app.
+AI-generated HTML editor, AI HTML editor, visual HTML editor, editable HTML editor, WYSIWYG HTML layout editor, HTML layout editor, Office-like HTML editor, PPT-like HTML editor, HTML presentation editor, macOS HTML editor, WKWebView editor, HTML to PDF, HTML to PPTX, html-to-pptx, html2pptx, html2ppt, source-available non-commercial software, vibe coding app.
 
 ## Install
 
