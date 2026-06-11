@@ -7,6 +7,7 @@
   const surface = document.getElementById("slideSurface");
   const layer = document.getElementById("elementLayer");
   const guideLayer = document.getElementById("guideLayer");
+  const pageBoundaryLayer = document.getElementById("pageBoundaryLayer");
   const hoverBox = document.getElementById("hoverBox");
   const selectionBox = document.getElementById("selectionBox");
 
@@ -356,6 +357,7 @@
     const delay = activeDirectTextEditNode?.isConnected ? 96 : 40;
     directLayoutTimer = setTimeout(() => {
       fitStage({ preserveScale: true });
+      updatePageBoundaryOverlay();
       updateSelectionBox();
     }, delay);
   }
@@ -581,6 +583,7 @@
     surface.style.background = deck.canvas.background || "#ffffff";
     surface.innerHTML = "";
     layer.innerHTML = "";
+    updatePageBoundaryOverlay();
 
     const elements = [...currentSlide().elements].sort((a, b) => a.z - b.z);
     for (const element of elements) {
@@ -596,6 +599,7 @@
     fitStage({ preserveScale: Boolean(options.preserveScale) });
     surface.style.background = "#ffffff";
     layer.innerHTML = "";
+    updatePageBoundaryOverlay();
     updateSelectionBox();
   }
 
@@ -931,24 +935,24 @@
     const canvas = deck.canvas;
 
     const xCandidates = [
-      { value: 0, label: "canvas-left" },
-      { value: canvas.width / 2, label: "canvas-center-x" },
-      { value: canvas.width, label: "canvas-right" }
+      { value: 0, label: "页面左边" },
+      { value: canvas.width / 2, label: "页面中线" },
+      { value: canvas.width, label: "页面右边" }
     ];
     const yCandidates = [
-      { value: 0, label: "canvas-top" },
-      { value: canvas.height / 2, label: "canvas-center-y" },
-      { value: canvas.height, label: "canvas-bottom" }
+      { value: 0, label: "页面顶部" },
+      { value: canvas.height / 2, label: "页面中线" },
+      { value: canvas.height, label: "页面底部" }
     ];
 
     for (const element of currentSlide().elements) {
       if (element.id === activeId) continue;
-      xCandidates.push({ value: element.x, label: `${element.id}-left` });
-      xCandidates.push({ value: element.x + element.w / 2, label: `${element.id}-center-x` });
-      xCandidates.push({ value: element.x + element.w, label: `${element.id}-right` });
-      yCandidates.push({ value: element.y, label: `${element.id}-top` });
-      yCandidates.push({ value: element.y + element.h / 2, label: `${element.id}-center-y` });
-      yCandidates.push({ value: element.y + element.h, label: `${element.id}-bottom` });
+      xCandidates.push({ value: element.x, label: "对象左边" });
+      xCandidates.push({ value: element.x + element.w / 2, label: "对象中线" });
+      xCandidates.push({ value: element.x + element.w, label: "对象右边" });
+      yCandidates.push({ value: element.y, label: "对象顶部" });
+      yCandidates.push({ value: element.y + element.h / 2, label: "对象中线" });
+      yCandidates.push({ value: element.y + element.h, label: "对象底部" });
     }
 
     const xEdges = [
@@ -965,13 +969,13 @@
     const xSnap = bestSnap(xEdges, xCandidates);
     if (xSnap) {
       xSnap.edge.apply(xSnap.candidate.value);
-      guides.push({ axis: "x", value: xSnap.candidate.value });
+      guides.push({ axis: "x", value: xSnap.candidate.value, label: xSnap.candidate.label });
     }
 
     const ySnap = bestSnap(yEdges, yCandidates);
     if (ySnap) {
       ySnap.edge.apply(ySnap.candidate.value);
-      guides.push({ axis: "y", value: ySnap.candidate.value });
+      guides.push({ axis: "y", value: ySnap.candidate.value, label: ySnap.candidate.label });
     }
 
     rect.x = Math.round(rect.x);
@@ -1006,11 +1010,89 @@
       if (guide.axis === "x") node.style.left = `${guide.value}px`;
       if (guide.axis === "y") node.style.top = `${guide.value}px`;
       guideLayer.appendChild(node);
+
+      if (guide.label) {
+        const label = document.createElement("div");
+        label.className = `guide-label ${guide.axis}`;
+        label.textContent = guide.label;
+        if (guide.axis === "x") {
+          label.style.left = `${Math.round(guide.value) + 6}px`;
+          label.style.top = "8px";
+        } else {
+          label.style.left = "8px";
+          label.style.top = `${Math.round(guide.value) + 6}px`;
+        }
+        guideLayer.appendChild(label);
+      }
     }
   }
 
   function hideGuides() {
     guideLayer.innerHTML = "";
+  }
+
+  function updatePageBoundaryOverlay() {
+    if (!pageBoundaryLayer) return;
+    pageBoundaryLayer.innerHTML = "";
+
+    const frames = pageFramesForCurrentMode().slice(0, 80);
+    for (const frame of frames) {
+      const rect = frame.rect;
+      if (!rect || rect.w < 24 || rect.h < 24) continue;
+
+      const boundary = document.createElement("div");
+      boundary.className = "page-boundary";
+      boundary.style.left = `${Math.round(rect.x)}px`;
+      boundary.style.top = `${Math.round(rect.y)}px`;
+      boundary.style.width = `${Math.round(rect.w)}px`;
+      boundary.style.height = `${Math.round(rect.h)}px`;
+      boundary.dataset.pageIndex = String(frame.index + 1);
+
+      const label = document.createElement("div");
+      label.className = "page-boundary-label";
+      label.textContent = `${frame.label} · ${Math.round(rect.w)}×${Math.round(rect.h)}`;
+      boundary.appendChild(label);
+
+      addBoundaryCenterLine(boundary, "x", rect.w / 2);
+      addBoundaryCenterLine(boundary, "y", rect.h / 2);
+      addBoundaryTicks(boundary, rect);
+      pageBoundaryLayer.appendChild(boundary);
+    }
+  }
+
+  function addBoundaryCenterLine(boundary, axis, value) {
+    const line = document.createElement("div");
+    line.className = `page-boundary-center ${axis}`;
+    if (axis === "x") line.style.left = `${Math.round(value)}px`;
+    if (axis === "y") line.style.top = `${Math.round(value)}px`;
+    boundary.appendChild(line);
+  }
+
+  function addBoundaryTicks(boundary, rect) {
+    const step = rect.w > 1400 || rect.h > 1400 ? 200 : 100;
+    const maxTicks = 36;
+    for (let x = step, count = 0; x < rect.w && count < maxTicks; x += step, count += 1) {
+      const tick = document.createElement("div");
+      tick.className = "page-boundary-tick x";
+      tick.style.left = `${Math.round(x)}px`;
+      boundary.appendChild(tick);
+    }
+    for (let y = step, count = 0; y < rect.h && count < maxTicks; y += step, count += 1) {
+      const tick = document.createElement("div");
+      tick.className = "page-boundary-tick y";
+      tick.style.top = `${Math.round(y)}px`;
+      boundary.appendChild(tick);
+    }
+  }
+
+  function pageFramesForCurrentMode() {
+    if (editorMode === "html") return directPageFrames();
+    const canvas = deck.canvas;
+    return [{
+      index: currentSlideIndex,
+      label: `Slide ${currentSlideIndex + 1}`,
+      rect: { x: 0, y: 0, w: canvas.width, h: canvas.height }
+    }];
   }
 
   function renderWithoutBridge() {
@@ -1023,6 +1105,7 @@
     for (const element of elements) layer.appendChild(createElementNode(element));
     selectedId = previousSelected;
     updateSelectionBox();
+    updatePageBoundaryOverlay();
     suppressHistory = false;
   }
 
@@ -2823,25 +2906,49 @@
   function buildDirectSnapCandidates(activeNodes) {
     const canvas = directCanvas();
     const x = [
-      { value: 0 },
-      { value: canvas.width / 2 },
-      { value: canvas.width }
+      { value: 0, label: "文档左边" },
+      { value: canvas.width / 2, label: "文档中线" },
+      { value: canvas.width, label: "文档右边" }
     ];
     const y = [
-      { value: 0 },
-      { value: canvas.height / 2 },
-      { value: canvas.height }
+      { value: 0, label: "文档顶部" },
+      { value: canvas.height / 2, label: "文档中线" },
+      { value: canvas.height, label: "文档底部" }
     ];
 
     const doc = directFrame?.contentDocument;
     if (!doc) return { x, y };
 
+    for (const frame of directPageFrames()) {
+      const rect = frame.rect;
+      const label = frame.label || "页面";
+      x.push(
+        { value: rect.x, label: `${label}左边` },
+        { value: rect.x + rect.w / 2, label: `${label}中线` },
+        { value: rect.x + rect.w, label: `${label}右边` }
+      );
+      y.push(
+        { value: rect.y, label: `${label}顶部` },
+        { value: rect.y + rect.h / 2, label: `${label}中线` },
+        { value: rect.y + rect.h, label: `${label}底部` }
+      );
+    }
+
     const nodes = [...doc.querySelectorAll("[data-chiselo-id]")].slice(0, 600);
     for (const node of nodes) {
       if (activeNodes.has(node) || !isDirectNodeVisible(node)) continue;
       const nodeRect = directNodeRect(node);
-      x.push({ value: nodeRect.x }, { value: nodeRect.x + nodeRect.w / 2 }, { value: nodeRect.x + nodeRect.w });
-      y.push({ value: nodeRect.y }, { value: nodeRect.y + nodeRect.h / 2 }, { value: nodeRect.y + nodeRect.h });
+      const label = directSemanticForNode(node).label || "对象";
+      x.push(
+        { value: nodeRect.x, label: `${label}左边` },
+        { value: nodeRect.x + nodeRect.w / 2, label: `${label}中线` },
+        { value: nodeRect.x + nodeRect.w, label: `${label}右边` }
+      );
+      y.push(
+        { value: nodeRect.y, label: `${label}顶部` },
+        { value: nodeRect.y + nodeRect.h / 2, label: `${label}中线` },
+        { value: nodeRect.y + nodeRect.h, label: `${label}底部` }
+      );
     }
 
     return { x, y };
@@ -2945,13 +3052,13 @@
     const xSnap = bestSnap(xEdges, xCandidates);
     if (xSnap) {
       xSnap.edge.apply(xSnap.candidate.value);
-      guides.push({ axis: "x", value: xSnap.candidate.value });
+      guides.push({ axis: "x", value: xSnap.candidate.value, label: xSnap.candidate.label });
     }
 
     const ySnap = bestSnap(yEdges, yCandidates);
     if (ySnap) {
       ySnap.edge.apply(ySnap.candidate.value);
-      guides.push({ axis: "y", value: ySnap.candidate.value });
+      guides.push({ axis: "y", value: ySnap.candidate.value, label: ySnap.candidate.label });
     }
 
     rect.x = Math.round(rect.x);
@@ -3560,7 +3667,7 @@
   }
 
   function directAlignmentFrame(node) {
-    const page = node.closest(".slide, .sheet, [data-slide], [data-page]");
+    const page = node.closest(DIRECT_FIXED_FRAME_SELECTOR);
     if (page && page !== node) return directNodeRect(page);
     return directCanvasRect();
   }
@@ -3568,6 +3675,49 @@
   function directCanvasRect() {
     const canvas = directCanvas();
     return { x: 0, y: 0, w: canvas.width, h: canvas.height };
+  }
+
+  function directPageFrames() {
+    const doc = directFrame?.contentDocument;
+    if (!doc?.body) {
+      return [{ index: 0, label: "页面", rect: directCanvasRect() }];
+    }
+
+    const candidates = uniqueElements([...doc.querySelectorAll(DIRECT_FIXED_FRAME_SELECTOR)])
+      .filter((node) => node !== doc.body && node !== doc.documentElement && isDirectNodeVisible(node));
+    const candidateSet = new Set(candidates);
+    const topLevelPages = candidates.filter((node) => {
+      let parent = node.parentElement;
+      while (parent && parent !== doc.body && parent !== doc.documentElement) {
+        if (candidateSet.has(parent)) return false;
+        parent = parent.parentElement;
+      }
+      return true;
+    });
+
+    const pages = topLevelPages.length ? topLevelPages : [doc.body];
+    return pages.map((node, index) => {
+      const rect = node === doc.body ? directCanvasRect() : directNodeRect(node);
+      return {
+        index,
+        label: pageFrameLabel(node, index, pages.length),
+        rect
+      };
+    });
+  }
+
+  function pageFrameLabel(node, index, total) {
+    if (!node || node.matches?.("body")) {
+      return total > 1 ? `页面 ${index + 1}` : "页面";
+    }
+    const explicit = node.getAttribute("data-title")
+      || node.getAttribute("aria-label")
+      || node.getAttribute("title")
+      || "";
+    if (explicit.trim()) return explicit.trim().slice(0, 28);
+    const semantic = directSemanticForNode(node);
+    if (semantic.role === "page") return total > 1 ? `页面 ${index + 1}` : "页面";
+    return total > 1 ? `${semantic.label} ${index + 1}` : semantic.label;
   }
 
   function arrangeDirectSelected(mode) {
@@ -4662,6 +4812,7 @@ ${htmlSlides}
 
   window.addEventListener("resize", () => {
     fitStage({ preserveScale: editorMode === "html" });
+    updatePageBoundaryOverlay();
     scheduleSelectionBoxUpdate();
   });
   viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
@@ -4733,6 +4884,14 @@ ${htmlSlides}
     getHTMLTree: buildHTMLTree,
     getHTMLSummary,
     getImportDiagnostics,
+    getPageFrames: () => pageFramesForCurrentMode().map((frame) => ({
+      index: frame.index,
+      label: frame.label,
+      x: frame.rect.x,
+      y: frame.rect.y,
+      w: frame.rect.w,
+      h: frame.rect.h
+    })),
     getViewportState: () => ({
       scale,
       fitScale,

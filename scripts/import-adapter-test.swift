@@ -70,6 +70,8 @@ final class ImportAdapterTest: NSObject, WKNavigationDelegate, WKScriptMessageHa
           editor.selectHTML('#spanTable .merged');
           const selectedBefore = editor.getSelection();
           const htmlTree = editor.getHTMLTree();
+          const pageFrames = editor.getPageFrames();
+          const pageBoundaryCount = document.querySelectorAll('.page-boundary').length;
           editor.command('tableAddColumnAfter');
           const afterAdd = editor.exportHTML();
           const afterAddDiagnostics = editor.getImportDiagnostics();
@@ -94,6 +96,8 @@ final class ImportAdapterTest: NSObject, WKNavigationDelegate, WKScriptMessageHa
             tableDetected: before.tableCount === 1,
             selectedCellSemantic: selectedBefore.semanticRole === 'table-cell' && selectedBefore.semanticLabel === '单元格',
             treeSemanticPage: htmlTree.some(node => node.semanticRole === 'page' && node.semanticLabel === '页面'),
+            pageFrameDetected: pageFrames.length === 1 && pageFrames[0].w >= 900 && pageFrames[0].h >= 500,
+            pageBoundaryRendered: pageBoundaryCount === pageFrames.length,
             backdropSwitcherWorks: gridBackdropApplied && dotsBackdropApplied && cleanBackdropApplied,
             spanTableDetected: before.spanTableCount === 1,
             mergedColumnExpanded: afterAdd.includes('colspan="3"'),

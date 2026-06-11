@@ -22,6 +22,8 @@ Each document opens in a browser-style tab.
 
 `Transform` mode writes `transform: translate(...)` and is gentler when preserving the original document flow matters.
 
+Chiselo shows detected page or slide boundaries on the canvas with center reference lines and ruler ticks. Dragging or resizing objects can snap to the detected page edges and center lines for more precise page-level adjustment.
+
 ## Safe Saving
 
 When opening a real local HTML or Chiselo deck file, Chiselo creates a one-time sibling backup named like `filename.chiselo-backup.html` or `filename.chiselo-backup.aislide`. If that backup already exists, Chiselo keeps it instead of replacing it.

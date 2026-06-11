@@ -7,6 +7,8 @@ All notable changes to Chiselo will be documented here.
 - Added semantic object labels for imported HTML so the UI can show user-facing names like page, title, image, table, card, module, and cell instead of raw DOM tags.
 - Renamed the HTML navigation UI toward object-editing language: object structure, page objects, and layer navigation.
 - Added import-adapter coverage for semantic page and table-cell recognition.
+- Added visual page/slide boundary overlays with center lines and ruler ticks for direct HTML and deck editing.
+- Added page/slide frame edges and centers to direct HTML snapping so movement and resizing can align to the detected page frame.
 
 ## 0.1.4 - 2026-06-11
 
