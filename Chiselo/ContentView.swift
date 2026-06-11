@@ -53,6 +53,10 @@ struct ContentView: View {
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: fileDropTargetBinding) { providers in
             model.openDroppedFiles(from: providers)
         }
+        .sheet(isPresented: exportPreflightBinding) {
+            ExportPreflightPanel()
+                .environmentObject(model)
+        }
     }
 
     private var fileDropTargetBinding: Binding<Bool> {
@@ -60,6 +64,14 @@ struct ContentView: View {
             model.isFileDropTargeted
         } set: { targeted in
             model.setFileDropTargeted(targeted)
+        }
+    }
+
+    private var exportPreflightBinding: Binding<Bool> {
+        Binding {
+            model.isExportPreflightPresented
+        } set: { isPresented in
+            model.isExportPreflightPresented = isPresented
         }
     }
 }
@@ -479,6 +491,18 @@ private struct ExportMenu: View {
     var body: some View {
         Menu {
             Button {
+                model.presentExportPreflight()
+            } label: {
+                ExportMenuItemLabel(
+                    title: "导出预检",
+                    subtitle: preflightSubtitle,
+                    icon: preflightIcon
+                )
+            }
+
+            Divider()
+
+            Button {
                 model.exportHTML()
             } label: {
                 ExportMenuItemLabel(
@@ -527,6 +551,16 @@ private struct ExportMenu: View {
         .disabled(!model.hasOpenDocument)
         .help("从 HTML 主资产导出 HTML、PDF 或可编辑 PPTX")
     }
+
+    private var preflightSubtitle: String {
+        guard model.documentMode == "html" else { return "检查页面、对象和导出格式" }
+        return model.htmlDiagnostics.preflightSummary
+    }
+
+    private var preflightIcon: String {
+        guard model.documentMode == "html" else { return "checklist" }
+        return model.htmlDiagnostics.preflightIcon
+    }
 }
 
 private struct ExportMenuItemLabel: View {
@@ -545,6 +579,443 @@ private struct ExportMenuItemLabel: View {
         } icon: {
             Image(systemName: icon)
         }
+    }
+}
+
+private struct ExportPreflightPanel: View {
+    @EnvironmentObject private var model: EditorModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: model.documentMode == "html" ? model.htmlDiagnostics.preflightIcon : "checklist")
+                    .font(.system(size: 22, weight: .heavy))
+                    .foregroundStyle(headerColor)
+                    .frame(width: 42, height: 42)
+                    .background(headerColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("导出预检")
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundStyle(MaterialTheme.ink)
+                    Text(headerSubtitle)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(MaterialTheme.muted)
+                }
+
+                Spacer()
+
+                Button {
+                    model.refreshHTMLDiagnostics()
+                } label: {
+                    Label("刷新", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(MaterialButtonStyle())
+                .disabled(model.documentMode != "html")
+            }
+            .padding(20)
+            .background(MaterialTheme.surfaceStrong)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if model.documentMode == "html" {
+                        htmlPreflightContent
+                    } else {
+                        deckPreflightContent
+                    }
+                }
+                .padding(20)
+            }
+
+            Divider()
+
+            HStack(spacing: 10) {
+                Button("关闭") {
+                    dismiss()
+                }
+                .buttonStyle(MaterialButtonStyle())
+
+                Spacer()
+
+                Button {
+                    closeThen { model.exportHTML() }
+                } label: {
+                    Label("导出 HTML", systemImage: "doc.text")
+                }
+                .buttonStyle(MaterialButtonStyle())
+
+                Button {
+                    closeThen { model.exportPDF() }
+                } label: {
+                    Label("导出 PDF", systemImage: "doc.richtext")
+                }
+                .buttonStyle(MaterialButtonStyle())
+
+                Button {
+                    closeThen { model.exportPPTX() }
+                } label: {
+                    Label("导出 PPTX", systemImage: "rectangle.on.rectangle.angled")
+                }
+                .buttonStyle(MaterialButtonStyle(filled: true))
+            }
+            .padding(16)
+            .background(MaterialTheme.surfaceStrong)
+        }
+        .frame(width: 720, height: 680)
+    }
+
+    private var htmlPreflightContent: some View {
+        let diagnostics = model.htmlDiagnostics
+
+        return VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ExportTargetScoreCard(
+                    title: "HTML",
+                    subtitle: diagnostics.cleanExport ? "干净导出" : "需清理",
+                    score: diagnostics.htmlReadinessScore,
+                    icon: "doc.text",
+                    detail: diagnostics.cleanExport ? "无编辑器临时标记，适合交付或继续二次编辑。" : "导出内容仍含临时标记，需要先处理。",
+                    color: scoreColor(diagnostics.htmlReadinessScore)
+                )
+
+                ExportTargetScoreCard(
+                    title: "PDF",
+                    subtitle: "高保真渲染",
+                    score: diagnostics.pdfFidelityScore,
+                    icon: "doc.richtext",
+                    detail: "PDF 以浏览器渲染为准，重点复查断链、越界和文字溢出。",
+                    color: scoreColor(diagnostics.pdfFidelityScore)
+                )
+
+                ExportTargetScoreCard(
+                    title: "PPTX",
+                    subtitle: "可编辑性 \(diagnostics.pptxEditabilityScore)%",
+                    score: diagnostics.pptxEditabilityScore,
+                    icon: "rectangle.on.rectangle.angled",
+                    detail: diagnostics.pptxRiskSummary,
+                    color: scoreColor(diagnostics.pptxEditabilityScore)
+                )
+            }
+
+            PreflightRecommendationCard(diagnostics: diagnostics)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("问题定位")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(MaterialTheme.ink)
+
+                if let issues = diagnostics.issues, !issues.isEmpty {
+                    ForEach(issues.prefix(10)) { issue in
+                        DeliveryIssueRow(issue: issue) {
+                            if let elementId = issue.elementId {
+                                dismiss()
+                                model.selectHTMLNode(id: elementId)
+                            }
+                        }
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(successColor)
+                        Text("没有发现阻碍交付的问题。")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(MaterialTheme.muted)
+                    }
+                    .padding(12)
+                    .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("PPTX 复核提示")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(MaterialTheme.ink)
+
+                PreflightNoteRow(icon: "tablecells", title: "表格", detail: diagnostics.spanTableCount > 0 ? "合并单元格会降低 PPTX 对象映射稳定性。" : "普通表格仍建议导出后抽查行列和文字框。")
+                PreflightNoteRow(icon: "scribble.variable", title: "矢量/SVG", detail: diagnostics.svgCount > 0 ? "SVG 或复杂矢量可能会转成形状或图片，需要复核可编辑程度。" : "未检测到明显 SVG 风险。")
+                PreflightNoteRow(icon: "square.stack.3d.up", title: "层叠", detail: (diagnostics.overlapCount ?? 0) > 0 ? "重叠对象导出 PPTX 后要检查层级顺序。" : "未检测到明显重叠风险。")
+            }
+        }
+    }
+
+    private var deckPreflightContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ExportTargetScoreCard(
+                    title: "HTML",
+                    subtitle: "结构页导出",
+                    score: 96,
+                    icon: "doc.text",
+                    detail: "当前内容已经是对象化页面，HTML 导出风险较低。",
+                    color: scoreColor(96)
+                )
+                ExportTargetScoreCard(
+                    title: "PDF",
+                    subtitle: "页面渲染",
+                    score: 96,
+                    icon: "doc.richtext",
+                    detail: "PDF 会按页面尺寸渲染，适合高保真交付。",
+                    color: scoreColor(96)
+                )
+                ExportTargetScoreCard(
+                    title: "PPTX",
+                    subtitle: "对象可编辑",
+                    score: 90,
+                    icon: "rectangle.on.rectangle.angled",
+                    detail: "文本、图片和形状会尽量保留为可编辑对象。",
+                    color: scoreColor(90)
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("当前页面结构")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(MaterialTheme.ink)
+                PreflightNoteRow(icon: "rectangle.on.rectangle", title: "页面", detail: "\(model.documentStats.pageCount ?? 0) 页")
+                PreflightNoteRow(icon: "square.grid.2x2", title: "对象", detail: "\(model.documentStats.objectCount ?? 0) 个对象")
+                PreflightNoteRow(icon: "photo", title: "图片", detail: "\(model.documentStats.imageCount ?? 0) 张图片")
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if model.documentMode == "html" {
+            return model.htmlDiagnostics.preflightSummary
+        }
+        return "对象化页面可导出 HTML、PDF 和 PPTX"
+    }
+
+    private var headerColor: Color {
+        if model.documentMode == "html" {
+            return scoreColor(model.htmlDiagnostics.overallExportScore)
+        }
+        return successColor
+    }
+
+    private var successColor: Color {
+        Color(red: 0.06, green: 0.52, blue: 0.26)
+    }
+
+    private func scoreColor(_ score: Int) -> Color {
+        if score >= 85 { return successColor }
+        if score >= 65 { return Color(red: 0.78, green: 0.47, blue: 0.06) }
+        return MaterialTheme.accentDanger
+    }
+
+    private func closeThen(_ action: @escaping () -> Void) {
+        dismiss()
+        DispatchQueue.main.async {
+            action()
+        }
+    }
+}
+
+private struct ExportTargetScoreCard: View {
+    var title: String
+    var subtitle: String
+    var score: Int
+    var icon: String
+    var detail: String
+    var color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(color)
+                    .frame(width: 24, height: 24)
+                    .background(color.opacity(0.11), in: RoundedRectangle(cornerRadius: 7))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(MaterialTheme.ink)
+                    Text(subtitle)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(color)
+                }
+            }
+
+            Text("\(score)%")
+                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .foregroundStyle(color)
+
+            Text(detail)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(MaterialTheme.muted)
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
+        .background(MaterialTheme.surfaceStrong, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium))
+        .overlay(
+            RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium)
+                .stroke(color.opacity(0.22), lineWidth: 1)
+        )
+    }
+}
+
+private struct PreflightRecommendationCard: View {
+    var diagnostics: HTMLDiagnostics
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("导出建议")
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(MaterialTheme.ink)
+
+            ForEach(Array(recommendations.enumerated()), id: \.offset) { _, recommendation in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: recommendation.icon)
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundStyle(recommendation.color)
+                        .frame(width: 18, height: 18)
+                    Text(recommendation.text)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(MaterialTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(14)
+        .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium))
+    }
+
+    private var recommendations: [(icon: String, text: String, color: Color)] {
+        var items: [(String, String, Color)] = []
+        if diagnostics.blockingExportRiskCount > 0 {
+            items.append(("exclamationmark.triangle.fill", "先处理红色问题，再导出正式版本。断链、文字溢出和越界会直接影响交付质量。", MaterialTheme.accentDanger))
+        } else {
+            items.append(("checkmark.seal.fill", "HTML 和 PDF 可直接进入导出复核。重要文件仍建议打开导出结果抽查一遍。", Color(red: 0.06, green: 0.52, blue: 0.26)))
+        }
+
+        if diagnostics.pptxReviewRiskCount > 0 {
+            items.append(("rectangle.on.rectangle.angled", "PPTX 属于可编辑映射，表格、SVG、重叠对象和合并单元格导出后需要重点复核。", Color(red: 0.78, green: 0.47, blue: 0.06)))
+        } else {
+            items.append(("rectangle.on.rectangle.angled", "PPTX 可编辑性风险较低，可导出后检查文本框、图片和对象层级。", Color(red: 0.06, green: 0.52, blue: 0.26)))
+        }
+        return items
+    }
+}
+
+private struct PreflightNoteRow: View {
+    var icon: String
+    var title: String
+    var detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .heavy))
+                .foregroundStyle(MaterialTheme.primary)
+                .frame(width: 18, height: 18)
+                .background(MaterialTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(MaterialTheme.ink)
+                Text(detail)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(MaterialTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+    }
+}
+
+private extension HTMLDiagnostics {
+    var preflightSummary: String {
+        if blockingExportRiskCount > 0 {
+            return "\(blockingExportRiskCount) 项需先处理"
+        }
+        if pptxReviewRiskCount > 0 {
+            return "\(pptxReviewRiskCount) 项导出后需复核"
+        }
+        return "HTML、PDF、PPTX 可进入导出复核"
+    }
+
+    var preflightIcon: String {
+        if blockingExportRiskCount > 0 { return "exclamationmark.triangle.fill" }
+        if pptxReviewRiskCount > 0 { return "checklist" }
+        return "checkmark.seal.fill"
+    }
+
+    var blockingExportRiskCount: Int {
+        var count = 0
+        count += brokenImages
+        count += brokenMedia
+        if !cleanExport { count += 1 }
+        count += textOverflowCount ?? 0
+        count += outOfBoundsCount ?? 0
+        return count
+    }
+
+    var pptxReviewRiskCount: Int {
+        var count = 0
+        if tableCount > 0 { count += 1 }
+        if spanTableCount > 0 { count += 1 }
+        if svgCount > 0 { count += 1 }
+        if (overlapCount ?? 0) > 0 { count += 1 }
+        return count
+    }
+
+    var htmlReadinessScore: Int {
+        boundedScore(
+            100
+            - (brokenImages + brokenMedia) * 18
+            - (cleanExport ? 0 : 30)
+            - (textOverflowCount ?? 0) * 10
+            - (outOfBoundsCount ?? 0) * 10
+            - min(18, (overlapCount ?? 0) * 3)
+        )
+    }
+
+    var pdfFidelityScore: Int {
+        boundedScore(
+            100
+            - (brokenImages + brokenMedia) * 22
+            - (textOverflowCount ?? 0) * 12
+            - (outOfBoundsCount ?? 0) * 12
+            - min(20, (overlapCount ?? 0) * 4)
+        )
+    }
+
+    var pptxEditabilityScore: Int {
+        boundedScore(
+            100
+            - (brokenImages + brokenMedia) * 16
+            - (textOverflowCount ?? 0) * 8
+            - (outOfBoundsCount ?? 0) * 8
+            - min(18, (overlapCount ?? 0) * 5)
+            - min(16, tableCount * 4)
+            - (spanTableCount > 0 ? 18 : 0)
+            - min(20, svgCount * 6)
+        )
+    }
+
+    var overallExportScore: Int {
+        min(htmlReadinessScore, pdfFidelityScore, pptxEditabilityScore)
+    }
+
+    var pptxRiskSummary: String {
+        if pptxEditabilityScore >= 85 {
+            return "PPTX 可编辑性较好，导出后抽查文本框和图片即可。"
+        }
+        if pptxEditabilityScore >= 65 {
+            return "PPTX 可编辑性中等，导出后重点检查表格、SVG 和层级。"
+        }
+        return "PPTX 可编辑性风险较高，建议先处理红色问题并复核复杂对象。"
+    }
+
+    private func boundedScore(_ value: Int) -> Int {
+        min(100, max(0, value))
     }
 }
 

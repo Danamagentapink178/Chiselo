@@ -46,6 +46,8 @@ Select a table, row, or cell to reveal row/column actions. Chiselo handles simpl
 
 The left sidebar flags delivery risks such as broken resources, temporary editor markers, complex tables, SVG usage, text overflow, out-of-bounds elements, and obvious overlaps. When a risk points to a real HTML element, click it to select that element on the canvas.
 
+Use `导出` > `导出预检` before final delivery. The preflight panel scores HTML readiness, PDF fidelity, and PPTX editability, then lists the issues that should be fixed before export or reviewed after PPTX export.
+
 ## Freeze Layout
 
 Freeze Layout converts the current rendered HTML into a structured editable Chiselo tab. This is useful when an HTML page, document, poster, dashboard, or slide-style page should behave like a fixed visual canvas for precise Office-like adjustment.
@@ -55,5 +57,7 @@ Freeze Layout converts the current rendered HTML into a structured editable Chis
 - HTML: clean edited document with Chiselo temporary attributes removed.
 - PDF: high-fidelity visual final output.
 - PPTX: best-effort object-editable delivery file.
+
+PPTX preflight highlights merged tables, SVG/vector graphics, object overlap, overflow, and missing resources because those areas most often need manual review in PowerPoint.
 
 PDF is the fidelity fallback when a delivery format cannot represent a CSS effect as editable objects.

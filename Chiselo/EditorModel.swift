@@ -72,6 +72,7 @@ final class EditorModel: ObservableObject {
     @Published var editorBackdrop: EditorBackdrop = .clean
     @Published var documentStats: DocumentStats = .empty
     @Published var htmlDiagnostics: HTMLDiagnostics = .empty
+    @Published var isExportPreflightPresented: Bool = false
 
     var hasOpenDocument: Bool {
         activeTabID != nil && !tabs.isEmpty
@@ -1023,6 +1024,17 @@ final class EditorModel: ObservableObject {
         }
     }
 
+    func presentExportPreflight() {
+        guard hasOpenDocument else {
+            status = "请先打开项目或拖入 HTML 文件"
+            return
+        }
+
+        refreshHTMLDiagnostics()
+        isExportPreflightPresented = true
+        status = "已打开导出预检"
+    }
+
     func freezeCurrentHTMLLayout() {
         guard hasOpenDocument else {
             status = "请先打开项目或拖入 HTML 文件"
@@ -1252,6 +1264,30 @@ final class EditorModel: ObservableObject {
     func selectHTMLNode(id: String) {
         guard let literal = jsStringLiteral(id) else { return }
         runJavaScript("window.ChiseloEditor?.selectHTMLById(\(literal));")
+    }
+
+    func refreshHTMLDiagnostics() {
+        guard hasOpenDocument, documentMode == "html" else { return }
+
+        webView?.evaluateJavaScript("JSON.stringify(window.ChiseloEditor?.getImportDiagnostics?.() ?? null);") { [weak self] result, error in
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let error {
+                    self.status = "预检刷新失败：\(error.localizedDescription)"
+                    return
+                }
+
+                guard let json = result as? String,
+                      json != "null",
+                      let data = json.data(using: .utf8),
+                      let diagnostics = try? JSONDecoder().decode(HTMLDiagnostics.self, from: data) else {
+                    return
+                }
+
+                self.updatePublished(\.htmlDiagnostics, to: diagnostics)
+            }
+        }
     }
 
     func updateElement(_ element: EditorElement) {

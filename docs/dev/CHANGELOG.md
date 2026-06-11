@@ -10,6 +10,7 @@ All notable changes to Chiselo will be documented here.
 - Added visual page/slide boundary overlays with center lines and ruler ticks for direct HTML and deck editing.
 - Added page/slide frame edges and centers to direct HTML snapping so movement and resizing can align to the detected page frame.
 - Added HTML multi-selection commands for matching width/height and distributing objects horizontally or vertically.
+- Added an export preflight panel with HTML/PDF readiness, PPTX editability scoring, issue navigation, and format-specific review guidance.
 
 ## 0.1.4 - 2026-06-11
 
