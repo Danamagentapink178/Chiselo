@@ -1534,6 +1534,7 @@
   }
 
   function directSelectionPayloadBase(nodes, rect) {
+    const frame = directElementFramePayload(nodes[0]);
     if (nodes.length > 1) {
       return {
         id: "chiselo-selection-group",
@@ -1547,6 +1548,7 @@
         y: rect.y,
         w: rect.w,
         h: rect.h,
+        frame,
         rotation: 0,
         z: 0,
         text: `已选中 ${nodes.length} 个对象`,
@@ -1562,6 +1564,7 @@
   function directElementPayloadForNode(node, rect) {
     const style = node.ownerDocument.defaultView.getComputedStyle(node);
     const semantic = directSemanticForNode(node);
+    const frame = directElementFramePayload(node);
     return {
       id: ensureDirectId(node),
       type: "html",
@@ -1576,6 +1579,7 @@
       y: rect.y,
       w: rect.w,
       h: rect.h,
+      frame,
       rotation: rotationFromTransform(style.transform),
       z: parseFloat(style.zIndex) || 0,
       text: normalizedText(node),
@@ -1591,6 +1595,20 @@
         radius: parseFloat(style.borderTopLeftRadius) || 0,
         textAlign: textAlignValue(style.textAlign)
       }
+    };
+  }
+
+  function directElementFramePayload(node) {
+    if (!node || !node.isConnected) return null;
+    const page = node.closest(DIRECT_FIXED_FRAME_SELECTOR);
+    const frameNode = page && page !== node ? page : null;
+    const rect = frameNode ? directNodeRect(frameNode) : directCanvasRect();
+    return {
+      label: frameNode ? pageFrameLabel(frameNode, 0, 1) : "画布",
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h
     };
   }
 

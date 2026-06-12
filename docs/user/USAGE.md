@@ -26,6 +26,8 @@ Chiselo shows detected page or canvas boundaries with center reference lines and
 
 For repeated HTML objects, use `子对象` or `同类` in the `精修` panel to select multiple objects, then use `同宽`, `同高`, `横等距`, or `纵等距` in `对齐` to make card, image, metric, and module groups consistent.
 
+When an object is selected, the `几何` panel shows its distance to the current page/canvas edges and its center offset. Use `复制几何` to copy position, size, margins, and center offset for before/after review.
+
 ## Safe Saving
 
 When opening a real local HTML or Chiselo project file, Chiselo creates a one-time sibling backup named like `filename.chiselo-backup.html` or `filename.chiselo-backup.aislide`. If that backup already exists, Chiselo keeps it instead of replacing it.

@@ -688,6 +688,7 @@ final class EditorModel: ObservableObject {
             layoutMode: bridgeString(object["layoutMode"]),
             imageSource: bridgeString(object["imageSource"]),
             imageAlt: bridgeString(object["imageAlt"]),
+            frame: bridgeElementFrame(object["frame"]),
             x: x,
             y: y,
             w: w,
@@ -697,6 +698,24 @@ final class EditorModel: ObservableObject {
             locked: bridgeBool(object["locked"]),
             text: bridgeString(object["text"]),
             style: bridgeStyle(object["style"])
+        )
+    }
+
+    private func bridgeElementFrame(_ value: Any?) -> EditorElementFrame? {
+        guard let object = value as? [String: Any],
+              let x = bridgeDouble(object["x"]),
+              let y = bridgeDouble(object["y"]),
+              let w = bridgeDouble(object["w"]),
+              let h = bridgeDouble(object["h"]) else {
+            return nil
+        }
+
+        return EditorElementFrame(
+            label: bridgeString(object["label"]),
+            x: x,
+            y: y,
+            w: w,
+            h: h
         )
     }
 

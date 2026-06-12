@@ -2085,6 +2085,41 @@ private enum InspectorTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+private struct GeometryMetrics {
+    var element: EditorElement
+    var frame: EditorElementFrame
+
+    var frameLabel: String {
+        frame.label?.isEmpty == false ? frame.label! : "画布"
+    }
+
+    var left: Double { element.x - frame.x }
+    var top: Double { element.y - frame.y }
+    var right: Double { frame.x + frame.w - element.x - element.w }
+    var bottom: Double { frame.y + frame.h - element.y - element.h }
+    var centerXOffset: Double { element.x + element.w / 2 - (frame.x + frame.w / 2) }
+    var centerYOffset: Double { element.y + element.h / 2 - (frame.y + frame.h / 2) }
+
+    var summary: String {
+        [
+            "对象: \(element.chiseloTypeLabel)",
+            "位置: X \(rounded(element.x)), Y \(rounded(element.y)), W \(rounded(element.w)), H \(rounded(element.h))",
+            "\(frameLabel): W \(rounded(frame.w)), H \(rounded(frame.h))",
+            "边距: 左 \(rounded(left)), 上 \(rounded(top)), 右 \(rounded(right)), 下 \(rounded(bottom))",
+            "中心偏移: X \(signed(centerXOffset)), Y \(signed(centerYOffset))"
+        ].joined(separator: "\n")
+    }
+
+    private func rounded(_ value: Double) -> String {
+        String(Int(value.rounded()))
+    }
+
+    private func signed(_ value: Double) -> String {
+        let roundedValue = Int(value.rounded())
+        return roundedValue > 0 ? "+\(roundedValue)" : "\(roundedValue)"
+    }
+}
+
 private struct InspectorPanel: View {
     @EnvironmentObject private var model: EditorModel
     @State private var selectedTab: InspectorTab = .layout
@@ -2217,18 +2252,46 @@ private struct InspectorPanel: View {
 
     private var geometryGroup: some View {
         GroupBox("几何") {
-            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-                GridRow {
-                    NumberField(label: "X", value: binding(\.x))
-                    NumberField(label: "Y", value: binding(\.y))
+            VStack(alignment: .leading, spacing: 12) {
+                Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                    GridRow {
+                        NumberField(label: "X", value: binding(\.x))
+                        NumberField(label: "Y", value: binding(\.y))
+                    }
+                    GridRow {
+                        NumberField(label: "W", value: binding(\.w))
+                        NumberField(label: "H", value: binding(\.h))
+                    }
+                    GridRow {
+                        NumberField(label: "旋转", value: binding(\.rotation))
+                        NumberField(label: "Z", value: binding(\.z))
+                    }
                 }
-                GridRow {
-                    NumberField(label: "W", value: binding(\.w))
-                    NumberField(label: "H", value: binding(\.h))
-                }
-                GridRow {
-                    NumberField(label: "旋转", value: binding(\.rotation))
-                    NumberField(label: "Z", value: binding(\.z))
+
+                if let metrics = selectedGeometryMetrics {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label(metrics.frameLabel, systemImage: "viewfinder")
+                                .font(.system(size: 11, weight: .heavy))
+                                .foregroundStyle(MaterialTheme.primary)
+                            Spacer()
+                            Text("\(formatMetric(metrics.frame.w)) x \(formatMetric(metrics.frame.h))")
+                                .font(.caption)
+                                .foregroundStyle(MaterialTheme.muted)
+                        }
+
+                        GeometryMetricGrid(metrics: metrics)
+
+                        Button {
+                            copyGeometrySummary(metrics)
+                        } label: {
+                            Label("复制几何", systemImage: "doc.on.doc")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(MaterialButtonStyle(compact: true))
+                        .help("复制位置、尺寸、边距和中心偏移，便于修改前后复查")
+                    }
                 }
             }
         }
@@ -2517,6 +2580,35 @@ private struct InspectorPanel: View {
 
     private var selectedTagName: String {
         model.selectedElement?.tagName?.lowercased() ?? ""
+    }
+
+    private var selectedGeometryMetrics: GeometryMetrics? {
+        guard let element = model.selectedElement else { return nil }
+        let frame = element.frame ?? selectedCanvasFrame
+        guard let frame else { return nil }
+        return GeometryMetrics(element: element, frame: frame)
+    }
+
+    private var selectedCanvasFrame: EditorElementFrame? {
+        if let canvas = model.deck?.canvas {
+            return EditorElementFrame(label: "画布", x: 0, y: 0, w: canvas.width, h: canvas.height)
+        }
+
+        if model.documentMode == "html", let element = model.selectedElement {
+            return EditorElementFrame(label: "画布", x: 0, y: 0, w: max(element.x + element.w, element.w), h: max(element.y + element.h, element.h))
+        }
+
+        return nil
+    }
+
+    private func copyGeometrySummary(_ metrics: GeometryMetrics) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(metrics.summary, forType: .string)
+        model.status = "已复制几何复核信息"
+    }
+
+    private func formatMetric(_ value: Double) -> String {
+        String(Int(value.rounded()))
     }
 
     private var isSelectedImage: Bool {
@@ -2973,6 +3065,61 @@ private struct NumberField: View {
             return String(Int(value.rounded()))
         }
         return String(format: "%.\(fractionLength)f", value)
+    }
+}
+
+private struct GeometryMetricGrid: View {
+    var metrics: GeometryMetrics
+
+    var body: some View {
+        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+            GridRow {
+                GeometryMetricCell(title: "左", value: metrics.left)
+                GeometryMetricCell(title: "上", value: metrics.top)
+            }
+            GridRow {
+                GeometryMetricCell(title: "右", value: metrics.right)
+                GeometryMetricCell(title: "下", value: metrics.bottom)
+            }
+            GridRow {
+                GeometryMetricCell(title: "中心 X", value: metrics.centerXOffset, signed: true)
+                GeometryMetricCell(title: "中心 Y", value: metrics.centerYOffset, signed: true)
+            }
+        }
+    }
+}
+
+private struct GeometryMetricCell: View {
+    var title: String
+    var value: Double
+    var signed: Bool = false
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundStyle(MaterialTheme.primary)
+            Spacer(minLength: 6)
+            Text(formattedValue)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundStyle(value < 0 ? MaterialTheme.accentDanger : MaterialTheme.ink)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+        .overlay(
+            RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall)
+                .stroke(value < 0 ? MaterialTheme.accentDanger.opacity(0.45) : MaterialTheme.separator, lineWidth: 1)
+        )
+    }
+
+    private var formattedValue: String {
+        let rounded = Int(value.rounded())
+        if signed, rounded > 0 {
+            return "+\(rounded)"
+        }
+        return "\(rounded)"
     }
 }
 

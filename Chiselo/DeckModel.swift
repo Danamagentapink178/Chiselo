@@ -28,6 +28,7 @@ struct EditorElement: Codable, Identifiable, Equatable {
     var layoutMode: String?
     var imageSource: String?
     var imageAlt: String?
+    var frame: EditorElementFrame?
     var x: Double
     var y: Double
     var w: Double
@@ -37,6 +38,14 @@ struct EditorElement: Codable, Identifiable, Equatable {
     var locked: Bool?
     var text: String?
     var style: EditorElementStyle?
+}
+
+struct EditorElementFrame: Codable, Equatable {
+    var label: String?
+    var x: Double
+    var y: Double
+    var w: Double
+    var h: Double
 }
 
 struct EditorElementStyle: Codable, Equatable {

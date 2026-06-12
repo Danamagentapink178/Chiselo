@@ -4,6 +4,7 @@ All notable changes to Chiselo will be documented here.
 
 ## 0.1.5 - 2026-06-12
 
+- Added geometry review metrics in the Inspector: selected objects now show page/canvas margins, center offset, and a copyable geometry summary.
 - Repositioned Chiselo around "HTML finishing and delivery" instead of generated-HTML-only or slide-only editing.
 - Updated user-facing app labels toward page/canvas refinement, delivery preflight, object structure, and Chiselo project files.
 - Bumped the packaging version to `0.1.5` for the next preview build.

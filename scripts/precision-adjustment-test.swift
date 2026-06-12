@@ -56,6 +56,14 @@ final class PrecisionAdjustmentTest: NSObject, WKNavigationDelegate, WKScriptMes
                 const assertTrue = (name, pass, detail = {}) => {
                   results.push({ name, pass, ...detail });
                 };
+                const frameMetrics = (rect) => ({
+                  left: Math.round(rect.x - rect.frame.x),
+                  top: Math.round(rect.y - rect.frame.y),
+                  right: Math.round(rect.frame.x + rect.frame.w - rect.x - rect.w),
+                  bottom: Math.round(rect.frame.y + rect.frame.h - rect.y - rect.h),
+                  centerX: Math.round(rect.x + rect.w / 2 - (rect.frame.x + rect.frame.w / 2)),
+                  centerY: Math.round(rect.y + rect.h / 2 - (rect.frame.y + rect.frame.h / 2))
+                });
                 const select = (selector) => {
                   const item = editor.selectHTML(selector);
                   if (!item) throw new Error(`Missing ${selector}`);
@@ -76,7 +84,15 @@ final class PrecisionAdjustmentTest: NSObject, WKNavigationDelegate, WKScriptMes
                 editor.updateElement({ ...align, x: 80, y: 80, w: 180, h: 90 });
                 editor.command('alignCenter');
                 editor.command('alignMiddle');
-                assertRect('align center/middle to slide', editor.getSelection(), { x: 640 - 90, y: 360 - 45, w: 180, h: 90 });
+                const aligned = editor.getSelection();
+                assertRect('align center/middle to slide', aligned, { x: 640 - 90, y: 360 - 45, w: 180, h: 90 });
+                assertTrue('selection includes review frame metrics', Boolean(aligned.frame && aligned.frame.w === 1280 && aligned.frame.h === 720), {
+                  frame: aligned.frame,
+                  metrics: aligned.frame ? frameMetrics(aligned) : null
+                });
+                assertTrue('center offset reports aligned object', aligned.frame && frameMetrics(aligned).centerX === 0 && frameMetrics(aligned).centerY === 0, {
+                  metrics: aligned.frame ? frameMetrics(aligned) : null
+                });
 
                 let flow = select('#flow-title');
                 editor.command('setLayoutTransform');
@@ -95,6 +111,9 @@ final class PrecisionAdjustmentTest: NSObject, WKNavigationDelegate, WKScriptMes
                 if (!group || group.type !== 'html-group') throw new Error('Group selection failed');
                 editor.updateElement({ ...group, x: 720, y: 420, w: 360, h: 150 });
                 assertRect('multi-select group boundary', editor.getSelection(), { x: 720, y: 420, w: 360, h: 150 }, 1);
+                assertTrue('multi-select includes review frame metrics', Boolean(editor.getSelection().frame && editor.getSelection().frame.w === 1280 && editor.getSelection().frame.h === 720), {
+                  frame: editor.getSelection().frame
+                });
 
                 const scaledG1 = select('#g1');
                 const scaledG2 = select('#g2');
