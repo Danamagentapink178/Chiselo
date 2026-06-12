@@ -58,6 +58,8 @@ Use `导出` > `导出预检` before final delivery. The preflight panel scores 
 
 After conversion, the left sidebar and export preflight show an editable-version quality summary with direct-editable object counts, fallback counts, and PPTX editability. Captured cards, sections, tables, and visual modules also keep module membership metadata so related objects can be reviewed together.
 
+When you select an object that belongs to a captured module, use `选择模块` in the Inspector to select the whole module. The module can then be moved, nudged with arrow keys, aligned, snapped, duplicated, deleted, or locked as one unit while its internal text, image, and shape objects remain editable.
+
 ## Export
 
 - HTML: clean edited document with Chiselo temporary attributes removed.

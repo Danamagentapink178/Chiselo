@@ -368,6 +368,32 @@ img[data-chiselo-broken-resource] {
   background: rgba(10, 132, 255, 0.045);
 }
 
+.group-badge {
+  position: absolute;
+  left: 0;
+  top: var(--toolbar-offset);
+  display: inline-flex;
+  align-items: center;
+  max-width: 260px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(10, 132, 255, 0.24);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--accent);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: scale(var(--overlay-scale));
+  transform-origin: top left;
+}
+
 .resize-handle {
   position: absolute;
   width: var(--handle-size);

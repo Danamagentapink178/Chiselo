@@ -2527,6 +2527,10 @@ private struct InspectorPanel: View {
                 }
                 if element.groupLabel != nil || element.groupId != nil {
                     GroupMembershipBadge(element: element, compact: false)
+                    if element.type != "deck-group" {
+                        CommandButton(title: "选择模块", icon: "square.3.layers.3d", command: "selectModuleGroup")
+                            .help("选中所属模块，进行整组移动、对齐和吸附")
+                    }
                 }
                 LabeledContent("ID", value: element.id)
                 if let tagName = element.tagName {
@@ -3245,6 +3249,8 @@ private extension EditorElement {
             return semanticLabel
         }
 
+        if type == "deck-group" { return "模块组" }
+
         switch tagName?.lowercased() {
         case "img":
             return "图片"
@@ -3270,6 +3276,7 @@ private extension EditorElement {
             if type == "text" { return "文本" }
             if type == "image" { return "图片" }
             if type == "html-group" { return "多选对象" }
+            if type == "deck-group" { return "模块组" }
             return "对象"
         }
     }
@@ -3289,6 +3296,8 @@ private extension EditorElement {
         case "footer":
             return "rectangle.bottomthird.inset.filled"
         case "card", "module", "container":
+            return "square.3.layers.3d"
+        case "module-group":
             return "square.3.layers.3d"
         case "selection-group":
             return "square.grid.2x2"

@@ -32,6 +32,7 @@
   let editorMode = "deck";
   let currentSlideIndex = 0;
   let selectedId = null;
+  let selectedDeckGroupId = null;
   let directFrame = null;
   let directSelectedNode = null;
   let directSelectedNodes = [];
@@ -204,6 +205,8 @@
 
   function selectedElement() {
     if (editorMode === "html") return directSelectedElement();
+    const groupSelection = deckGroupSelectionElement();
+    if (groupSelection) return groupSelection;
     if (activeGesture?.mode === "deck" && activeGesture.selectionPayloadBase && activeGesture.lastRect) {
       return {
         ...activeGesture.selectionPayloadBase,
@@ -215,6 +218,93 @@
       };
     }
     return currentSlide().elements.find((element) => element.id === selectedId) || null;
+  }
+
+  function deckGroupElements(groupId = selectedDeckGroupId) {
+    if (!groupId || editorMode !== "deck") return [];
+    return currentSlide().elements.filter((element) => element.groupId === groupId);
+  }
+
+  function deckGroupBounds(groupId = selectedDeckGroupId) {
+    const elements = deckGroupElements(groupId);
+    if (!elements.length) return null;
+
+    const left = Math.min(...elements.map((element) => Number(element.x) || 0));
+    const top = Math.min(...elements.map((element) => Number(element.y) || 0));
+    const right = Math.max(...elements.map((element) => (Number(element.x) || 0) + (Number(element.w) || 0)));
+    const bottom = Math.max(...elements.map((element) => (Number(element.y) || 0) + (Number(element.h) || 0)));
+    return {
+      x: Math.round(left),
+      y: Math.round(top),
+      w: Math.round(Math.max(1, right - left)),
+      h: Math.round(Math.max(1, bottom - top)),
+      rotation: 0
+    };
+  }
+
+  function deckGroupMeta(groupId = selectedDeckGroupId) {
+    const elements = deckGroupElements(groupId);
+    const first = elements[0] || null;
+    return {
+      groupRole: first?.groupRole || "module",
+      groupLabel: first?.groupLabel || "模块"
+    };
+  }
+
+  function deckGroupSelectionBase(groupId = selectedDeckGroupId) {
+    const bounds = deckGroupBounds(groupId);
+    if (!bounds) return null;
+
+    const meta = deckGroupMeta(groupId);
+    const count = deckGroupElements(groupId).length;
+    return {
+      id: `chiselo-deck-group-${groupId}`,
+      type: "deck-group",
+      tagName: "group",
+      htmlPath: `已选中模块：${meta.groupLabel}`,
+      semanticRole: "module-group",
+      semanticLabel: "模块组",
+      groupId,
+      groupRole: meta.groupRole,
+      groupLabel: meta.groupLabel,
+      sourceKind: "module-group-selection",
+      editability: "group-editable",
+      fidelity: "native",
+      captureNote: `模块组包含 ${count} 个可编辑对象，可整组移动、对齐和吸附。`,
+      x: bounds.x,
+      y: bounds.y,
+      w: bounds.w,
+      h: bounds.h,
+      rotation: 0,
+      z: 0,
+      text: `已选中模块：${meta.groupLabel}（${count} 个对象）`,
+      style: null
+    };
+  }
+
+  function deckGroupSelectionElement() {
+    if (!selectedDeckGroupId || editorMode !== "deck") return null;
+
+    if (activeGesture?.mode === "deck" && activeGesture.type === "group-drag" && activeGesture.selectionPayloadBase && activeGesture.lastRect) {
+      return {
+        ...activeGesture.selectionPayloadBase,
+        x: activeGesture.lastRect.x,
+        y: activeGesture.lastRect.y,
+        w: activeGesture.lastRect.w,
+        h: activeGesture.lastRect.h,
+        rotation: 0
+      };
+    }
+
+    return deckGroupSelectionBase(selectedDeckGroupId);
+  }
+
+  function isDeckGroupSelection() {
+    return editorMode === "deck" && Boolean(selectedDeckGroupId && deckGroupBounds(selectedDeckGroupId));
+  }
+
+  function clearDeckGroupSelection() {
+    selectedDeckGroupId = null;
   }
 
   function sanitizeBridgeValue(value, seen = new WeakSet()) {
@@ -446,6 +536,7 @@
       editorMode = "deck";
       currentSlideIndex = Math.min(currentSlideIndex, deck.slides.length - 1);
       selectedId = null;
+      clearDeckGroupSelection();
       directSelectedNode = null;
       render();
       postDeckChanged();
@@ -687,13 +778,19 @@
       selectionBox.innerHTML = "";
       delete selectionBox.dataset.selectedId;
       delete selectionBox.dataset.locked;
+      delete selectionBox.dataset.group;
+      selectionBox.classList.remove("is-group");
       return;
     }
 
     const locked = Boolean(element.locked);
-    const shouldRebuildChrome = selectionBox.dataset.selectedId !== element.id || selectionBox.dataset.locked !== String(locked);
+    const groupSelected = isDeckGroupSelection();
+    const shouldRebuildChrome = selectionBox.dataset.selectedId !== element.id
+      || selectionBox.dataset.locked !== String(locked)
+      || selectionBox.dataset.group !== String(groupSelected);
     selectionBox.hidden = false;
     selectionBox.classList.toggle("is-locked", locked);
+    selectionBox.classList.toggle("is-group", groupSelected);
     selectionBox.style.left = `${element.x}px`;
     selectionBox.style.top = `${element.y}px`;
     selectionBox.style.width = `${element.w}px`;
@@ -704,14 +801,22 @@
 
     selectionBox.dataset.selectedId = element.id;
     selectionBox.dataset.locked = String(locked);
+    selectionBox.dataset.group = String(groupSelected);
     selectionBox.innerHTML = "";
 
-    for (const handle of handles) {
-      const grip = document.createElement("div");
-      grip.className = "resize-handle";
-      grip.dataset.handle = handle;
-      grip.addEventListener("pointerdown", (event) => beginResize(event, handle));
-      selectionBox.appendChild(grip);
+    if (groupSelected) {
+      const badge = document.createElement("div");
+      badge.className = "group-badge";
+      badge.textContent = element.groupLabel || "模块组";
+      selectionBox.appendChild(badge);
+    } else {
+      for (const handle of handles) {
+        const grip = document.createElement("div");
+        grip.className = "resize-handle";
+        grip.dataset.handle = handle;
+        grip.addEventListener("pointerdown", (event) => beginResize(event, handle));
+        selectionBox.appendChild(grip);
+      }
     }
 
     if (element.locked) {
@@ -722,8 +827,11 @@
     }
   }
 
-  function selectElement(id) {
-    if (selectedId === id) return;
+  function selectElement(id, options = {}) {
+    const preserveGroup = options.preserveGroup && selectedDeckGroupId;
+    const hadGroupSelection = Boolean(selectedDeckGroupId);
+    if (!preserveGroup) clearDeckGroupSelection();
+    if (selectedId === id && (preserveGroup || !hadGroupSelection)) return;
     selectedId = id;
     updateSelectionBox();
     postSelectionChanged({ immediate: true });
@@ -737,17 +845,37 @@
     return selectedElement();
   }
 
+  function selectGroupById(groupId) {
+    if (editorMode !== "deck") return null;
+    const elements = deckGroupElements(groupId);
+    if (!groupId || !elements.length) return null;
+    selectedDeckGroupId = groupId;
+    selectedId = elements[0].id;
+    updateSelectionBox();
+    postSelectionChanged({ immediate: true });
+    return selectedElement();
+  }
+
+  function selectCurrentGroup() {
+    if (editorMode !== "deck") return null;
+    const element = currentSlide().elements.find((item) => item.id === selectedId);
+    if (!element?.groupId) return selectedElement();
+    return selectGroupById(element.groupId);
+  }
+
   function clearSelection() {
     if (editorMode === "html") {
       directSelectedNode = null;
       directSelectedNodes = [];
       selectedId = null;
+      clearDeckGroupSelection();
       updateSelectionBox();
       postSelectionChanged();
       return;
     }
 
     selectedId = null;
+    clearDeckGroupSelection();
     updateSelectionBox();
     postSelectionChanged({ immediate: true });
   }
@@ -765,12 +893,43 @@
 
     const element = currentSlide().elements.find((item) => item.id === id);
     if (!element) return;
+    const dragGroupId = selectedDeckGroupId && element.groupId === selectedDeckGroupId ? selectedDeckGroupId : null;
+    const dragGroupElements = dragGroupId ? deckGroupElements(dragGroupId) : [];
+    const shouldDragGroup = dragGroupId && dragGroupElements.length > 1;
 
-    selectElement(id);
+    selectElement(id, { preserveGroup: shouldDragGroup });
     if (element.locked || event.target.closest("[contenteditable='true']")) return;
+    if (shouldDragGroup && deckGroupHasLocked(dragGroupId)) return;
 
     event.preventDefault();
     pushHistory();
+
+    if (shouldDragGroup) {
+      const startRect = deckGroupBounds(dragGroupId);
+      if (!startRect) return;
+
+      activeGesture = {
+        mode: "deck",
+        type: "group-drag",
+        id,
+        groupId: dragGroupId,
+        groupElementIds: dragGroupElements.map((item) => item.id),
+        startPoint: pointFromEvent(event),
+        startRect,
+        startRects: dragGroupElements.map((item) => ({ id: item.id, rect: rectOf(item) })),
+        lastRect: startRect,
+        selectionPayloadBase: deckGroupSelectionBase(dragGroupId)
+      };
+
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic pointer events and some WebKit edge cases can reject capture.
+      }
+      document.addEventListener("pointermove", continueGesture);
+      document.addEventListener("pointerup", endGesture, { once: true });
+      return;
+    }
 
     const startRect = rectOf(element);
     activeGesture = {
@@ -801,6 +960,7 @@
     if (event.button !== 0) return;
     const element = selectedElement();
     if (!element || element.locked) return;
+    if (isDeckGroupSelection()) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -831,12 +991,37 @@
       return;
     }
 
-    const element = currentSlide().elements.find((item) => item.id === activeGesture.id);
-    if (!element) return;
-
     const point = pointFromEvent(event);
     const dx = point.x - activeGesture.startPoint.x;
     const dy = point.y - activeGesture.startPoint.y;
+
+    if (activeGesture.type === "group-drag") {
+      const groupId = activeGesture.groupId;
+      if (!groupId) return;
+
+      const nextRect = {
+        ...activeGesture.startRect,
+        x: activeGesture.startRect.x + dx,
+        y: activeGesture.startRect.y + dy
+      };
+      const snapped = snapRect(nextRect, activeGesture.groupElementIds || []);
+      activeGesture.lastRect = snapped.rect;
+      applyDeckGroupRect(groupId, snapped.rect, {
+        startBounds: activeGesture.startRect,
+        startRects: activeGesture.startRects,
+        history: false,
+        postDeck: false,
+        render: false
+      });
+      scheduleSelectionBoxUpdate();
+      showGuides(snapped.guides);
+      postSelectionChanged();
+      return;
+    }
+
+    const element = currentSlide().elements.find((item) => item.id === activeGesture.id);
+    if (!element) return;
+
     let nextRect = rectOf(element);
 
     if (activeGesture.type === "drag") {
@@ -892,6 +1077,55 @@
     };
   }
 
+  function deckGroupHasLocked(groupId = selectedDeckGroupId) {
+    return deckGroupElements(groupId).some((element) => element.locked);
+  }
+
+  function moveDeckGroupBy(groupId, dx, dy, options = {}) {
+    const elements = deckGroupElements(groupId);
+    if (!elements.length || deckGroupHasLocked(groupId)) return false;
+
+    if (options.history !== false) pushHistory(options.historyOptions || {});
+    for (const element of elements) {
+      element.x = Math.round((Number(element.x) || 0) + dx);
+      element.y = Math.round((Number(element.y) || 0) + dy);
+      updateDeckElementNode(element);
+    }
+    updateSelectionBox();
+    postSelectionChanged();
+    if (options.postDeck !== false) postDeckChanged();
+    return true;
+  }
+
+  function applyDeckGroupRect(groupId, nextBounds, options = {}) {
+    const elements = deckGroupElements(groupId);
+    if (!elements.length || deckGroupHasLocked(groupId)) return false;
+
+    const startBounds = options.startBounds || deckGroupBounds(groupId);
+    if (!startBounds) return false;
+
+    const startRects = options.startRects || elements.map((element) => ({ id: element.id, rect: rectOf(element) }));
+    const startRectMap = new Map(startRects.map((item) => [item.id, item.rect]));
+    const scaleX = startBounds.w ? nextBounds.w / startBounds.w : 1;
+    const scaleY = startBounds.h ? nextBounds.h / startBounds.h : 1;
+
+    if (options.history !== false) pushHistory(options.historyOptions || {});
+    for (const element of elements) {
+      const startRect = startRectMap.get(element.id) || rectOf(element);
+      element.x = Math.round(nextBounds.x + (startRect.x - startBounds.x) * scaleX);
+      element.y = Math.round(nextBounds.y + (startRect.y - startBounds.y) * scaleY);
+      element.w = Math.max(1, Math.round(startRect.w * scaleX));
+      element.h = Math.max(1, Math.round(startRect.h * scaleY));
+      updateDeckElementNode(element);
+    }
+
+    if (options.render) render();
+    else updateSelectionBox();
+    postSelectionChanged();
+    if (!options.render && options.postDeck !== false) postDeckChanged();
+    return true;
+  }
+
   function resizeRect(rect, handle, dx, dy, ratio) {
     let next = { ...rect };
 
@@ -935,6 +1169,7 @@
     const rect = { ...inputRect };
     const guides = [];
     const canvas = deck.canvas;
+    const activeIds = new Set(Array.isArray(activeId) ? activeId : activeId ? [activeId] : []);
 
     const xCandidates = [
       { value: 0, label: "页面左边" },
@@ -948,7 +1183,7 @@
     ];
 
     for (const element of currentSlide().elements) {
-      if (element.id === activeId) continue;
+      if (activeIds.has(element.id)) continue;
       xCandidates.push({ value: element.x, label: "对象左边" });
       xCandidates.push({ value: element.x + element.w / 2, label: "对象中线" });
       xCandidates.push({ value: element.x + element.w, label: "对象右边" });
@@ -1100,12 +1335,14 @@
   function renderWithoutBridge() {
     suppressHistory = true;
     const previousSelected = selectedId;
+    const previousGroup = selectedDeckGroupId;
     fitStage();
     surface.style.background = deck.canvas.background || "#ffffff";
     layer.innerHTML = "";
     const elements = [...currentSlide().elements].sort((a, b) => a.z - b.z);
     for (const element of elements) layer.appendChild(createElementNode(element));
     selectedId = previousSelected;
+    selectedDeckGroupId = previousGroup;
     updateSelectionBox();
     updatePageBoundaryOverlay();
     suppressHistory = false;
@@ -1147,6 +1384,23 @@
       return;
     }
 
+    if (nextElement?.type === "deck-group") {
+      const groupId = nextElement.groupId || selectedDeckGroupId;
+      if (!groupId) return;
+      const bounds = deckGroupBounds(groupId);
+      if (!bounds) return;
+      const nextBounds = {
+        ...bounds,
+        x: Number.isFinite(Number(nextElement.x)) ? Number(nextElement.x) : bounds.x,
+        y: Number.isFinite(Number(nextElement.y)) ? Number(nextElement.y) : bounds.y,
+        w: Math.max(1, Number.isFinite(Number(nextElement.w)) ? Number(nextElement.w) : bounds.w),
+        h: Math.max(1, Number.isFinite(Number(nextElement.h)) ? Number(nextElement.h) : bounds.h),
+        rotation: 0
+      };
+      applyDeckGroupRect(groupId, nextBounds, { render: true });
+      return;
+    }
+
     const elements = currentSlide().elements;
     const index = elements.findIndex((element) => element.id === nextElement.id);
     if (index < 0) return;
@@ -1154,6 +1408,7 @@
     pushHistory();
     elements[index] = { ...elements[index], ...nextElement };
     selectedId = nextElement.id;
+    clearDeckGroupSelection();
     render();
     postSelectionChanged({ immediate: true });
   }
@@ -1186,6 +1441,9 @@
         return;
       case "toggleLock":
         toggleLock();
+        return;
+      case "selectModuleGroup":
+        selectCurrentGroup();
         return;
       case "alignLeft":
         alignSelected("left");
@@ -1329,6 +1587,17 @@
       return;
     }
 
+    if (isDeckGroupSelection()) {
+      const groupId = selectedDeckGroupId;
+      const ids = new Set(deckGroupElements(groupId).map((element) => element.id));
+      if (!ids.size) return;
+      pushHistory();
+      currentSlide().elements = currentSlide().elements.filter((element) => !ids.has(element.id));
+      clearSelection();
+      render();
+      return;
+    }
+
     if (!selectedId) return;
     pushHistory();
     currentSlide().elements = currentSlide().elements.filter((element) => element.id !== selectedId);
@@ -1339,6 +1608,31 @@
   function duplicateSelected() {
     if (editorMode === "html") {
       duplicateDirectSelected();
+      return;
+    }
+
+    if (isDeckGroupSelection()) {
+      const groupId = selectedDeckGroupId;
+      const elements = deckGroupElements(groupId);
+      if (!elements.length) return;
+
+      pushHistory();
+      const nextGroupId = uniqueDeckGroupId(`${groupId}-copy`);
+      const nextZ = Math.max(...currentSlide().elements.map((item) => item.z), 0) + 1;
+      const copies = elements.map((element, index) => {
+        const copy = clone(element);
+        copy.id = uniqueDeckElementId(`${element.id}-copy`);
+        copy.groupId = nextGroupId;
+        copy.x = Math.round(copy.x + 18);
+        copy.y = Math.round(copy.y + 18);
+        copy.z = nextZ + index;
+        return copy;
+      });
+      currentSlide().elements.push(...copies);
+      selectedDeckGroupId = nextGroupId;
+      selectedId = copies[0]?.id || null;
+      render();
+      postSelectionChanged({ immediate: true });
       return;
     }
 
@@ -1353,6 +1647,7 @@
     copy.z = Math.max(...currentSlide().elements.map((item) => item.z), 0) + 1;
     currentSlide().elements.push(copy);
     selectedId = copy.id;
+    clearDeckGroupSelection();
     render();
     postSelectionChanged({ immediate: true });
   }
@@ -1368,9 +1663,41 @@
     return id;
   }
 
+  function uniqueDeckGroupId(base) {
+    const ids = new Set(currentSlide().elements.map((element) => element.groupId).filter(Boolean));
+    let id = base;
+    let index = 2;
+    while (ids.has(id)) {
+      id = `${base}-${index}`;
+      index += 1;
+    }
+    return id;
+  }
+
   function arrangeSelected(mode) {
     if (editorMode === "html") {
       arrangeDirectSelected(mode);
+      return;
+    }
+
+    if (isDeckGroupSelection()) {
+      const elements = deckGroupElements(selectedDeckGroupId);
+      if (!elements.length) return;
+      pushHistory();
+      const allElements = currentSlide().elements;
+      const zValues = allElements.map((item) => item.z);
+      const minZ = Math.min(...zValues);
+      const maxZ = Math.max(...zValues);
+      const sorted = [...elements].sort((a, b) => a.z - b.z);
+
+      if (mode === "front") sorted.forEach((element, index) => { element.z = maxZ + 1 + index; });
+      if (mode === "back") sorted.forEach((element, index) => { element.z = minZ - sorted.length + index; });
+      if (mode === "forward") sorted.forEach((element) => { element.z += 1; });
+      if (mode === "backward") sorted.forEach((element) => { element.z -= 1; });
+
+      normalizeZ();
+      render();
+      postSelectionChanged();
       return;
     }
 
@@ -1401,6 +1728,17 @@
   }
 
   function toggleLock() {
+    if (isDeckGroupSelection()) {
+      const elements = deckGroupElements(selectedDeckGroupId);
+      if (!elements.length) return;
+      const nextLocked = !elements.every((element) => element.locked);
+      pushHistory();
+      for (const element of elements) element.locked = nextLocked;
+      render();
+      postSelectionChanged();
+      return;
+    }
+
     const element = selectedElement();
     if (!element) return;
 
@@ -1413,6 +1751,23 @@
   function alignSelected(edge) {
     if (editorMode === "html") {
       alignDirectSelected(edge);
+      return;
+    }
+
+    if (isDeckGroupSelection()) {
+      const groupId = selectedDeckGroupId;
+      const bounds = deckGroupBounds(groupId);
+      if (!bounds || deckGroupHasLocked(groupId)) return;
+      const canvas = deck.canvas;
+      let dx = 0;
+      let dy = 0;
+      if (edge === "left") dx = -bounds.x;
+      if (edge === "center") dx = Math.round((canvas.width - bounds.w) / 2) - bounds.x;
+      if (edge === "right") dx = Math.round(canvas.width - bounds.w) - bounds.x;
+      if (edge === "top") dy = -bounds.y;
+      if (edge === "middle") dy = Math.round((canvas.height - bounds.h) / 2) - bounds.y;
+      if (edge === "bottom") dy = Math.round(canvas.height - bounds.h) - bounds.y;
+      moveDeckGroupBy(groupId, dx, dy);
       return;
     }
 
@@ -1434,6 +1789,24 @@
   function fitSelected(mode) {
     if (editorMode === "html") {
       fitDirectSelected(mode);
+      return;
+    }
+
+    if (isDeckGroupSelection()) {
+      const groupId = selectedDeckGroupId;
+      const bounds = deckGroupBounds(groupId);
+      if (!bounds || deckGroupHasLocked(groupId)) return;
+      const canvas = deck.canvas;
+      const nextBounds = { ...bounds };
+      if (mode === "width" || mode === "page") {
+        nextBounds.x = 0;
+        nextBounds.w = canvas.width;
+      }
+      if (mode === "height" || mode === "page") {
+        nextBounds.y = 0;
+        nextBounds.h = canvas.height;
+      }
+      applyDeckGroupRect(groupId, nextBounds, { render: true });
       return;
     }
 
@@ -1472,6 +1845,14 @@
       return;
     }
 
+    if (isDeckGroupSelection()) {
+      const groupId = selectedDeckGroupId;
+      const bounds = deckGroupBounds(groupId);
+      if (!bounds || deckGroupHasLocked(groupId)) return;
+      moveDeckGroupBy(groupId, snapNumber(bounds.x, grid) - bounds.x, snapNumber(bounds.y, grid) - bounds.y);
+      return;
+    }
+
     const element = selectedElement();
     if (!element || element.locked) return;
     pushHistory();
@@ -1500,6 +1881,11 @@
       }
       updateSelectionBox();
       postSelectionChanged();
+      return;
+    }
+
+    if (isDeckGroupSelection()) {
+      moveDeckGroupBy(selectedDeckGroupId, dx, dy);
       return;
     }
 
@@ -1682,6 +2068,7 @@
     directSelectedNode = null;
     directSelectedNodes = [];
     selectedId = null;
+    clearDeckGroupSelection();
     layer.innerHTML = "";
     hideGuides();
 
@@ -3993,6 +4380,7 @@
     deck = nextDeck;
     currentSlideIndex = 0;
     selectedId = null;
+    clearDeckGroupSelection();
     historyPast = [];
     historyFuture = [];
     clearDirty();
@@ -4006,6 +4394,7 @@
     if (currentSlideIndex === nextIndex) return;
     currentSlideIndex = nextIndex;
     selectedId = null;
+    clearDeckGroupSelection();
     render();
     postSelectionChanged();
   }
@@ -5687,6 +6076,7 @@ ${htmlSlides}
     newDeck,
     openHTMLFromBase64,
     selectElementById,
+    selectGroupById,
     selectSlide,
     selectHTML,
     selectHTMLById,

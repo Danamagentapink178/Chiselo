@@ -12,6 +12,7 @@ Creator note: Chiselo was built through vibe coding by a humanities-background c
 - Added `转为可编辑版` Layout IR v1 for turning rendered HTML into deterministic editable text, image, shape, pseudo-element, and whole-object fallback elements.
 - Shows a quality summary for editable versions, including editable text, replaceable images, adjustable shapes, whole-object fallbacks, and PPTX editability.
 - Adds deterministic module grouping metadata so captured card, section, table, and visual-module objects can be recognized together.
+- Lets captured modules be selected as a group from the Inspector, then moved, nudged, aligned, snapped, duplicated, deleted, or locked together.
 - Shows editability metadata for captured objects, including directly editable text, replaceable images, adjustable shapes, approximated pseudo-elements, and iframe/canvas whole-object fallbacks.
 - Uses consistent page/slide boundary detection for editable capture and export.
 - Detects runtime roots, scripts, embedded pages, canvas regions, shadow components, external runtime resources, and transparent selection blockers.
@@ -37,6 +38,7 @@ Commercial use is not allowed under the included license.
 - Select visible page objects directly on the canvas.
 - Edit text in place.
 - Move, resize, align, duplicate, delete, and adjust layer order.
+- Select captured cards/modules as one group after `转为可编辑版` for safer second-pass layout changes.
 - Replace images with embedded PNG/JPG/GIF/SVG/WebP data URLs.
 - Edit tables, including safer handling for `rowspan` and `colspan`.
 - Show page/canvas boundaries, center lines, ruler ticks, snapping guides, and distribution controls.

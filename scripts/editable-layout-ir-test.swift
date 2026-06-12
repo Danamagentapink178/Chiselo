@@ -77,6 +77,17 @@ final class EditableLayoutIRTest: NSObject, WKNavigationDelegate, WKScriptMessag
           const canvas = elements.find(element => element.tagName === 'canvas');
           const pseudo = elements.find(element => element.sourceKind === 'pseudo-element' && element.text === 'AUTO');
           const groupedCardObjects = elements.filter(element => element.groupId && element.groupId === text?.groupId);
+          const beforeMoveDeck = editor.getDeck();
+          const beforeMoveElements = beforeMoveDeck.slides.flatMap(slide => slide.elements);
+          const beforeMoveGroup = beforeMoveElements.filter(element => element.groupId && element.groupId === text?.groupId);
+          const beforeMoveOutside = beforeMoveElements.find(element => element.tagName === 'iframe');
+          const moduleSelection = text?.groupId ? editor.selectGroupById(text.groupId) : null;
+          editor.command('nudgeRightBig');
+          const afterMoveDeck = editor.getDeck();
+          const afterMoveElements = afterMoveDeck.slides.flatMap(slide => slide.elements);
+          const afterMoveGroup = afterMoveElements.filter(element => element.groupId && element.groupId === text?.groupId);
+          const afterMoveOutside = afterMoveElements.find(element => element.id === beforeMoveOutside?.id);
+          const movedGroupSelection = editor.getSelection();
           const exportHTML = editor.exportHTML();
 
           const assertions = {
@@ -84,6 +95,13 @@ final class EditableLayoutIRTest: NSObject, WKNavigationDelegate, WKScriptMessag
             dynamicTextCaptured: Boolean(text && text.type === 'text' && text.editability === 'text-editable' && text.fidelity === 'native'),
             visualObjectCaptured: Boolean(card && card.editability === 'style-editable'),
             cardObjectsGrouped: Boolean(text?.groupId && groupedCardObjects.length >= 4 && groupedCardObjects.some(element => element.type === 'rect') && groupedCardObjects.some(element => element.text === '96%')),
+            moduleGroupSelectable: Boolean(moduleSelection && moduleSelection.type === 'deck-group' && moduleSelection.groupId === text?.groupId && moduleSelection.w > 300 && moduleSelection.h > 100),
+            moduleGroupNudgesTogether: Boolean(beforeMoveGroup.length >= 4 && beforeMoveGroup.every(before => {
+              const after = afterMoveGroup.find(element => element.id === before.id);
+              return after && after.x === before.x + 10 && after.y === before.y;
+            })),
+            moduleGroupSelectionPersists: Boolean(movedGroupSelection && movedGroupSelection.type === 'deck-group' && movedGroupSelection.x === moduleSelection.x + 10),
+            moduleGroupNudgeKeepsOutsideObjectsStable: Boolean(beforeMoveOutside && afterMoveOutside && afterMoveOutside.x === beforeMoveOutside.x && afterMoveOutside.y === beforeMoveOutside.y),
             iframeFallbackCaptured: Boolean(iframe && iframe.editability === 'whole-object' && iframe.fidelity === 'fallback'),
             canvasFallbackCaptured: Boolean(canvas && canvas.editability === 'whole-object' && ['snapshot', 'fallback'].includes(canvas.fidelity)),
             pseudoExtracted: Boolean(pseudo && pseudo.fidelity === 'approximated'),
