@@ -2,21 +2,24 @@
 
 All notable changes to Chiselo will be documented here.
 
-## Unreleased
+## 0.1.5 - 2026-06-12
 
-- Added semantic object labels for imported HTML so the UI can show user-facing names like page, title, image, table, card, module, and cell instead of raw DOM tags.
+- Repositioned Chiselo around "HTML finishing and delivery" instead of generated-HTML-only or slide-only editing.
+- Updated user-facing app labels toward page/canvas refinement, delivery preflight, object structure, and Chiselo project files.
+- Bumped the packaging version to `0.1.5` for the next preview build.
+- Added semantic object labels for imported HTML so the UI can show user-facing names like page, title, image, table, card, module, and cell instead of underlying tags.
 - Renamed the HTML navigation UI toward object-editing language: object structure, page objects, and layer navigation.
 - Added import-adapter coverage for semantic page and table-cell recognition.
-- Added visual page/slide boundary overlays with center lines and ruler ticks for direct HTML and deck editing.
-- Added page/slide frame edges and centers to direct HTML snapping so movement and resizing can align to the detected page frame.
+- Added visual page/canvas boundary overlays with center lines and ruler ticks for direct HTML and Chiselo project editing.
+- Added page/canvas frame edges and centers to direct HTML snapping so movement and resizing can align to the detected page frame.
 - Added HTML multi-selection commands for matching width/height and distributing objects horizontally or vertically.
 - Added an export preflight panel with HTML/PDF readiness, PPTX editability scoring, issue navigation, and format-specific review guidance.
 - Added a snapshot history browser for choosing and restoring a specific `.chiselo-history/` version.
 
 ## 0.1.4 - 2026-06-11
 
-- Added safer real-file editing: opening a local HTML/deck file creates a one-time `.chiselo-backup` sibling copy.
-- Added save-time version snapshots in a sibling `.chiselo-history/` folder for HTML and deck files.
+- Added safer real-file editing: opening a local HTML or Chiselo project file creates a one-time `.chiselo-backup` sibling copy.
+- Added save-time version snapshots in a sibling `.chiselo-history/` folder for HTML and Chiselo project files.
 - Preserved existing `.chiselo-backup` files across app sessions instead of replacing the earliest safety copy.
 - Added a toolbar shortcut to reveal the current document's backup/history folder.
 - Added a confirmed restore action for the newest `.chiselo-history/` snapshot.
@@ -29,7 +32,7 @@ Stability patch focused on repeatable HTML editing and generated fixture coverag
 - Made HTML image replacement refresh after image load/layout settle so selection boxes and exports stay stable.
 - Made import diagnostics tolerate pages with no images, media, SVG, or tables.
 - Defaulted direct HTML layout adjustments to transform mode to reduce accidental document-flow changes.
-- Added generated HTML and `.aislide` fixtures plus an editing regression script that verifies text edits, image replacement, module movement, table edits, deck edits, and clean export.
+- Added generated HTML and Chiselo project fixtures plus an editing regression script that verifies text edits, image replacement, module movement, table edits, project edits, and clean export.
 - Updated release and packaging docs for the `0.1.3` preview release.
 
 ## 0.1.2 - 2026-06-10

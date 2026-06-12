@@ -226,7 +226,7 @@ private struct DropOverlay: View {
                     Text("拖入 HTML 文件，在新标签页打开")
                         .font(.system(size: 19, weight: .heavy, design: .rounded))
                         .foregroundStyle(MaterialTheme.ink)
-                    Text("HTML, HTM, XHTML, AISLIDE, JSON")
+                    Text("HTML / Chiselo 项目文件")
                         .font(.system(size: 11, weight: .heavy))
                         .tracking(1.4)
                         .foregroundStyle(MaterialTheme.primaryDark)
@@ -271,7 +271,7 @@ private struct WelcomeStartView: View {
             .keyboardShortcut("o", modifiers: .command)
 
             VStack(spacing: 6) {
-                Text("支持 HTML / HTM / XHTML / AISLIDE / JSON")
+                Text("支持 HTML、HTM、XHTML 和 Chiselo 项目文件")
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.1)
                     .foregroundStyle(MaterialTheme.primaryDark)
@@ -340,7 +340,7 @@ private struct AppToolbar: View {
                 Text("Chiselo")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(MaterialTheme.ink)
-                Text("HTML主资产 · Office式编辑")
+                Text("HTML精修 · 交付预检")
                     .font(.system(size: 10, weight: .bold))
                     .tracking(0.6)
                     .foregroundStyle(MaterialTheme.primary)
@@ -378,7 +378,7 @@ private struct AppToolbar: View {
                 model.freezeCurrentHTMLLayout()
             }
             .disabled(!model.hasOpenDocument)
-            .help("将当前 HTML 渲染结果对象化到新的精准布局标签页")
+            .help("将当前 HTML 渲染结果转为固定画布，便于精准调整复杂页面")
 
             MaterialDivider()
 
@@ -417,7 +417,7 @@ private struct AppToolbar: View {
                     RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall)
                         .stroke(MaterialTheme.separator, lineWidth: 1)
                 )
-                .help(model.documentMode == "html" ? "直接编辑当前 HTML 文档" : "对象化编辑当前页面")
+                .help(model.documentMode == "html" ? "精修当前 HTML 页面/文档" : "在固定画布中精修当前内容")
         }
         .buttonStyle(MaterialButtonStyle())
         .padding(.horizontal, MaterialTheme.panelPadding)
@@ -435,7 +435,7 @@ private struct AppToolbar: View {
 
     private var modeBadgeTitle: String {
         guard model.hasOpenDocument else { return "准备开始" }
-        return model.documentMode == "html" ? "HTML模式" : "结构模式"
+        return model.documentMode == "html" ? "页面精修" : "画布精修"
     }
 }
 
@@ -756,10 +756,10 @@ private struct ExportPreflightPanel: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ExportTargetScoreCard(
                     title: "HTML",
-                    subtitle: "结构页导出",
+                    subtitle: "画布导出",
                     score: 96,
                     icon: "doc.text",
-                    detail: "当前内容已经是对象化页面，HTML 导出风险较低。",
+                    detail: "当前内容已经是固定画布，HTML 导出风险较低。",
                     color: scoreColor(96)
                 )
                 ExportTargetScoreCard(
@@ -795,7 +795,7 @@ private struct ExportPreflightPanel: View {
         if model.documentMode == "html" {
             return model.htmlDiagnostics.preflightSummary
         }
-        return "对象化页面可导出 HTML、PDF 和 PPTX"
+        return "固定画布可导出 HTML、PDF 和 PPTX"
     }
 
     private var headerColor: Color {
@@ -1133,7 +1133,7 @@ private struct HistoryBrowserPanel: View {
             Text("还没有保存快照")
                 .font(.system(size: 16, weight: .heavy))
                 .foregroundStyle(MaterialTheme.ink)
-            Text("覆盖保存 HTML 或 slides 文件后，Chiselo 会自动把旧版本放进 `.chiselo-history`，之后就能在这里复查和恢复。")
+            Text("覆盖保存 HTML 或 Chiselo 项目文件后，Chiselo 会自动把旧版本放进 `.chiselo-history`，之后就能在这里复查和恢复。")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(MaterialTheme.muted)
                 .multilineTextAlignment(.center)

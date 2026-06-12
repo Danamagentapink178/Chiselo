@@ -23,7 +23,7 @@ Do not commit these to the repository:
 - `.build/`;
 - `outputs/`;
 - `Chiselo.app`;
-- `Chiselo-0.1.4.dmg`;
+- `Chiselo-0.1.5.dmg`;
 - logs, temp files, local caches, and unreferenced temporary screenshots.
 
 The DMG should be uploaded later as a GitHub Release asset.
@@ -47,37 +47,37 @@ Chiselo
 Short description:
 
 ```text
-Chisel your HTML: HTML as the primary asset, Office-like visual editing, multi-format output.
+HTML finishing and delivery tool for visually refining pages and documents, then exporting HTML/PDF/PPTX.
 ```
 
 Alternative shorter description:
 
 ```text
-A macOS visual editor for polishing AI-generated HTML and exporting clean HTML, PDF, and PPTX.
+A macOS app for refining existing or generated HTML pages, documents, dashboards, posters, and presentations.
 ```
 
 Search-optimized description:
 
 ```text
-Visual HTML editor for AI-generated HTML: edit real HTML like Office/PPT, export clean HTML, PDF, PPTX/html2pptx. macOS.
+Visual HTML finishing tool: adjust text, images, tables, modules, layout, preflight delivery, export HTML/PDF/PPTX. macOS.
 ```
 
 About text:
 
 ```text
-Chiselo helps you polish existing or AI-generated HTML with an Office-like visual editing layer. Built through vibe coding by a humanities-background creator, with thanks to Codex and GPT.
+Chiselo helps you refine existing or generated HTML pages and visual documents, run delivery checks, and export HTML, PDF, or editable PPTX. Built through vibe coding by a humanities-background creator, with thanks to Codex and GPT.
 ```
 
 Topics:
 
 ```text
-macos swiftui wkwebview html-editor ai-generated-html ai-html-editor visual-editor wysiwyg layout-editor html-layout-editor office-like ppt-like editable-html html-to-pdf html-to-pptx html2ppt html2pptx pdf-export pptx-export vibe-coding non-commercial source-available
+macos swiftui wkwebview html-editor visual-editor wysiwyg layout-editor html-layout-editor editable-html html-finishing delivery-check html-to-pdf html-to-pptx html2ppt html2pptx pdf-export pptx-export vibe-coding non-commercial source-available
 ```
 
 Star reminder for README or pinned issue:
 
 ```text
-If Chiselo helps you or you are interested in AI-native software creation, please star the repository so more people can find it.
+If Chiselo helps you or you care about precise HTML editing and visual delivery workflows, please star the repository so more people can find it.
 ```
 
 ## Step 1: Create The GitHub Repository
@@ -140,19 +140,19 @@ To rebuild the default package:
 ```bash
 scripts/release-preflight.sh
 scripts/package-dmg.sh
-hdiutil verify outputs/Chiselo-0.1.4.dmg
+hdiutil verify outputs/Chiselo-0.1.5.dmg
 ```
 
 Default release asset:
 
 ```text
-outputs/Chiselo-0.1.4.dmg
+outputs/Chiselo-0.1.5.dmg
 ```
 
 If using a custom package output from the Codex build folder, upload:
 
 ```text
-outputs/codex-build/Chiselo-0.1.4.dmg
+outputs/codex-build/Chiselo-0.1.5.dmg
 ```
 
 Only upload one DMG to GitHub Releases unless you intentionally built multiple variants.
@@ -165,20 +165,20 @@ Only upload one DMG to GitHub Releases unless you intentionally built multiple v
 4. Create a new tag:
 
 ```text
-v0.1.4-preview.1
+v0.1.5-preview.1
 ```
 
 5. Release title:
 
 ```text
-Chiselo 0.1.4 Preview
+Chiselo 0.1.5 Preview
 ```
 
 6. Check `Set as a pre-release`.
 7. Paste the text from:
 
 ```text
-docs/releases/RELEASE_NOTES_0.1.4_PREVIEW.md
+docs/releases/RELEASE_NOTES_0.1.5_PREVIEW.md
 ```
 
 8. Upload the DMG file.

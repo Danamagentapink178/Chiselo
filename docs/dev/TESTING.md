@@ -30,9 +30,9 @@ node scripts/validate-deck.mjs outputs/generated-fixture-edits/test-10-slide-dec
 ```
 
 These use the bundled sample HTML page unless you pass a custom HTML path.
-`generated-fixtures-editing-test.swift` edits the generated HTML and `.aislide` fixtures with the Chiselo editor runtime, exports the edited files to `outputs/generated-fixture-edits/`, and checks text editing, image replacement, module movement, table edits, deck edits, and clean export.
+`generated-fixtures-editing-test.swift` edits the generated HTML and Chiselo project fixtures with the Chiselo editor runtime, exports the edited files to `outputs/generated-fixture-edits/`, and checks text editing, image replacement, module movement, table edits, project edits, and clean export.
 
-## Demo Deck Checks
+## Demo Page Checks
 
 ```bash
 node scripts/generate-digital-transformation-slides.mjs

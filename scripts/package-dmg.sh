@@ -6,7 +6,7 @@ OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/outputs}"
 DEFAULT_OUTPUT_DIR="$ROOT_DIR/outputs"
 APP_NAME="Chiselo"
 BUNDLE_ID="app.chiselo.editor"
-VERSION="0.1.4"
+VERSION="0.1.5"
 BUILD_CONFIG="release"
 BUILD_DIR="$ROOT_DIR/.build/arm64-apple-macosx/$BUILD_CONFIG"
 APP_BUNDLE="$ROOT_DIR/.build/package/$APP_NAME.app"
@@ -86,7 +86,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     </dict>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>Chiselo Deck</string>
+      <string>Chiselo Project</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
       <key>LSHandlerRank</key>
@@ -104,7 +104,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
       <key>UTTypeIdentifier</key>
       <string>app.chiselo.aislide</string>
       <key>UTTypeDescription</key>
-      <string>Chiselo Deck</string>
+      <string>Chiselo Project</string>
       <key>UTTypeConformsTo</key>
       <array>
         <string>public.json</string>
@@ -174,29 +174,29 @@ Chisel your HTML
 
 当前能力
 --------
-- 定位：HTML 主资产 + Office 软件式可视化编辑层 + 多格式输出。
-- 打开并直接编辑任意 HTML 文档。
+- 定位：HTML 精修与交付工具。
+- 打开并精修现有或生成的 HTML 页面/文档。
 - 可把外部 HTML / HTM / XHTML 文件直接拖进窗口打开。
-- 支持在窗口、tab 条、侧栏和中间 WebView 画布区域拖入文件；画布不再吞掉 HTML 文件拖拽。
-- 支持浏览器式多 tab：每个 HTML 或 deck 独立保存当前编辑快照，可切换、关闭。
+- 支持在窗口、tab 条、侧栏和中间画布区域拖入文件；画布不再吞掉 HTML 文件拖拽。
+- 支持浏览器式多 tab：每个 HTML 或 Chiselo 项目独立保存当前编辑快照，可切换、关闭。
 - 支持从 Finder 把 HTML 文件拖到 Chiselo.app 图标，或用“打开方式”直接进入编辑。
 - 已内置符合 macOS 的 Chiselo 图标，Finder、Dock、安装包和应用切换器都会显示。
-- 支持 AI 生成或已有的 HTML 页面、A4 文档、海报、dashboard、HTML slides。
-- 自动修复片段式或缺少 html/head/body 包装的 AI HTML。
+- 支持页面、文档、报告、海报、dashboard 和演示式 HTML。
+- 自动修复片段式或缺少 html/head/body 包装的 HTML。
 - 采用 macOS 毛玻璃风格界面：轻量侧栏、清爽画布背景、统一设计 token。
-- 点击画布或 DOM 树选择元素。
-- 画布正文可直接点击选中元素；DOM 树只是精细选层级的辅助。
+- 点击画布或对象结构选择内容。
+- 画布正文可直接点击选中对象；对象结构只是精细选层级的辅助。
 - 双击标题、段落、列表项、表格单元格等文字节点可直接原地编辑；选中文字节点后按 Enter 也可进入编辑。
 - 按住 Command 并滚动鼠标滚轮可直接放大/缩小画布，控制点会保持可抓取大小。
 - 画布内 hover 提示和选中快捷动作条，可直接编辑文字、替换图片、复制、删除、置顶置底。
-- Shift/Cmd 点选可多选真实 DOM，支持同类选择、子元素选择和组合调整。
+- Shift/Cmd 点选可多选页面对象，支持同类选择、子对象选择和组合调整。
 - 拖拽、缩放、对齐、铺满、吸附网格、微调。
 - 修改文字、替换图片、识别断链图片、增删表格行列、调整单元格样式。
 - 左侧交付检查会提示断链资源、复杂表格、SVG 和干净 HTML 状态。
 - 表格行列操作包含 rowspan / colspan 合并单元格保护。
 - 配套自动视觉 QA 脚本可逐页截图检查越界、遮挡和文本溢出。
-- 导出干净 HTML、高保真 PDF、对象级可编辑 PPTX；输出格式服务于 HTML 主资产的最终交付。
-- 打开真实 HTML/deck 文件时会保留 .chiselo-backup 原始备份；保存覆盖前会写入 .chiselo-history 版本快照。
+- 导出干净 HTML、高保真 PDF、对象级可编辑 PPTX；输出格式服务于最终交付。
+- 打开真实 HTML/Chiselo 项目文件时会保留 .chiselo-backup 原始备份；保存覆盖前会写入 .chiselo-history 版本快照。
 - 工具栏可打开备份目录，也可确认后恢复最近快照。
 
 注意事项

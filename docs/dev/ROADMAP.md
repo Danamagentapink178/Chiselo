@@ -2,14 +2,14 @@
 
 ## Product Direction
 
-Chiselo should become an HTML layout operating layer for AI-generated visual documents.
+Chiselo should become an HTML finishing and delivery layer for visual documents.
 
 The core idea:
 
-- HTML remains the real source document.
+- HTML remains the editable source document.
 - Browser rendering is used as the truth for what the user sees.
 - Chiselo builds object-level controls on top of that rendered result.
-- Exports are compiler targets: HTML, PDF, PPTX, and future formats.
+- Export checks and compiler targets focus on delivery quality: HTML, PDF, PPTX, and future formats.
 
 ## Near Term
 
@@ -27,7 +27,7 @@ The core idea:
 
 ## Recently Landed
 
-- Page/slide boundary detection for AI-generated HTML.
+- Page/canvas boundary detection for HTML documents.
 - Visible page boundaries, center references, ruler ticks, snapping guides, and distribution controls.
 - Export preflight with HTML/PDF readiness and PPTX editability scoring.
 - Visual history browser for `.chiselo-history/` snapshots.

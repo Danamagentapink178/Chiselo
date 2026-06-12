@@ -7,37 +7,37 @@ Use this page when filling GitHub repository fields, writing a pinned issue, or 
 Short:
 
 ```text
-Chisel your HTML: HTML as the primary asset, Office-like visual editing, multi-format output.
+HTML finishing and delivery tool for visually refining pages and documents, then exporting HTML/PDF/PPTX.
 ```
 
 Search-friendly:
 
 ```text
-A macOS visual editor for polishing AI-generated HTML and exporting clean HTML, PDF, and PPTX.
+A macOS app for refining existing or generated HTML pages, documents, dashboards, posters, and presentations.
 ```
 
 Search-optimized:
 
 ```text
-Visual HTML editor for AI-generated HTML: edit real HTML like Office/PPT, export clean HTML, PDF, PPTX/html2pptx. macOS.
+Visual HTML finishing tool: adjust text, images, tables, modules, layout, preflight delivery, export HTML/PDF/PPTX. macOS.
 ```
 
 ## About Text
 
 ```text
-Chiselo helps you polish existing or AI-generated HTML with an Office-like visual editing layer. Built through vibe coding by a humanities-background creator, with thanks to Codex and GPT.
+Chiselo helps you refine existing or generated HTML pages and visual documents, run delivery checks, and export HTML, PDF, or editable PPTX. Built through vibe coding by a humanities-background creator, with thanks to Codex and GPT.
 ```
 
 ## Chinese Intro
 
 ```text
-Chiselo 用来打磨你的 HTML。HTML 是主资产，Chiselo 在真实浏览器渲染之上提供类似 Office / PPT 的可视化编辑层，让你快速修文字、修布局、调元素，然后导出干净 HTML、PDF 或 PPTX。
+Chiselo 是一款 HTML 精修与交付工具。打开现有或生成的 HTML 页面/文档，调整文字、图片、表格、模块和版式，交付前预检问题，然后导出干净 HTML、高保真 PDF 或尽量可编辑的 PPTX。
 ```
 
 ## English Intro
 
 ```text
-Chiselo is a native macOS app for polishing existing or AI-generated HTML with an Office-like visual editing layer and multi-format output.
+Chiselo is a native macOS app for refining and delivering HTML pages and visual documents.
 ```
 
 ## Creator Note
@@ -55,7 +55,7 @@ I am a humanities-background creator, not a trained programmer. Chiselo is the r
 ## Star Reminder
 
 ```text
-If Chiselo helps you or you are interested in AI-native software creation, please star the repository so more people can find it.
+If Chiselo helps you or you care about precise HTML editing and visual delivery workflows, please star the repository so more people can find it.
 ```
 
 中文版本：
@@ -71,15 +71,13 @@ macos
 swiftui
 wkwebview
 html-editor
-ai-generated-html
-ai-html-editor
 visual-editor
 wysiwyg
 layout-editor
 html-layout-editor
-office-like
-ppt-like
 editable-html
+html-finishing
+delivery-check
 html-to-pdf
 html-to-pptx
 html2ppt
@@ -96,7 +94,7 @@ source-available
 ```text
 I am releasing the first public preview of Chiselo.
 
-Chiselo is a macOS app for polishing existing or AI-generated HTML. It treats HTML as the primary asset, adds an Office-like visual editing layer, and exports clean HTML, PDF, and best-effort editable PPTX.
+Chiselo is a macOS app for refining existing or generated HTML pages and visual documents. It lets you adjust text, images, tables, modules, and layout visually, run delivery checks, and export clean HTML, PDF, and best-effort editable PPTX.
 
 I am not a trained programmer. This project was built through vibe coding with Codex and GPT, then tested and polished step by step.
 
@@ -110,7 +108,7 @@ Stars are appreciated if you want to follow the project.
 ```text
 我发布了 Chiselo 的第一个公开预览版。
 
-Chiselo 是一个 macOS 应用，用来打磨现有或 AI 生成的 HTML。它把 HTML 当作主资产，在真实浏览器渲染之上提供类似 Office / PPT 的可视化编辑层，然后导出干净 HTML、PDF 或尽量可编辑的 PPTX。
+Chiselo 是一个 macOS 应用，用来精修现有或生成的 HTML 页面/文档。它让你可视化调整文字、图片、表格、模块和版式，交付前预检问题，然后导出干净 HTML、高保真 PDF 或尽量可编辑的 PPTX。
 
 我是文科生，不懂代码。这个项目是我通过 vibe coding，借助 Codex 和 GPT 一步步做出来、测试出来、打磨出来的。
 

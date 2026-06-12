@@ -74,7 +74,7 @@
       slides: [
         {
           id: "slide-1",
-          title: "AI HTML 页面",
+          title: "HTML 精修页面",
           elements: [
             {
               id: "title",
@@ -104,7 +104,7 @@
               h: 88,
               rotation: 0,
               z: 19,
-              text: "HTML 主资产，Office 式可视化编辑，多格式输出。",
+              text: "HTML 精修、交付预检、多格式输出。",
               style: {
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
                 fontSize: 28,
@@ -4341,7 +4341,7 @@ ${htmlElements}
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHTML(deck.slides[0]?.title || "Chiselo Deck")}</title>
+  <title>${escapeHTML(deck.slides[0]?.title || "Chiselo Project")}</title>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }

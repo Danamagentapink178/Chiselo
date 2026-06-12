@@ -7,40 +7,44 @@
 
 **Chisel your HTML.**
 
-Chiselo is a native macOS app for polishing existing or AI-generated HTML with an Office-like visual editing layer and multi-format output.
+Chiselo is a native macOS app for refining and delivering HTML pages and visual documents.
 
-中文定位：Chiselo 用来打磨你的 HTML。HTML 是主资产，Chiselo 在真实浏览器渲染之上提供 Office-like / PPT-like 的可视化编辑层，让你像修改 Office 或 PPT 一样，直接修改 AI 生成或现有的网页、文档、海报、仪表盘和 HTML 演示。
+中文定位：Chiselo 是一款 HTML 精修与交付工具。打开现有或生成的 HTML 页面/文档，像整理交付稿一样调整文字、图片、表格、模块和版式，然后导出干净 HTML、高保真 PDF 或尽量可编辑的 PPTX。
 
-It is not a site builder, not a rich text editor, and not only an HTML-to-PPT tool. The core promise is simple:
+Chiselo starts from an existing HTML document. It is a finishing and delivery workflow, not a project authoring environment. The core promise is simple:
 
-**Bring in your HTML, fix text and layout visually, then export deliverables.**
+**Bring in your HTML, refine it visually, preflight delivery, then export.**
 
 ![Chiselo editor preview](assets/chiselo-editor-preview.png)
 
 ## Download
 
-The latest public preview is `Chiselo-0.1.4.dmg`.
+Current source and package version: `0.1.5`.
+
+The latest published DMG is still `Chiselo-0.1.4.dmg` until the next GitHub Release asset is uploaded.
 
 - [Preview Release](https://github.com/JunZhaoNathan/Chiselo/releases/tag/v0.1.4-preview.1)
-- [Release Notes](docs/releases/RELEASE_NOTES_0.1.4_PREVIEW.md)
+- [0.1.5 Preview Notes](docs/releases/RELEASE_NOTES_0.1.5_PREVIEW.md)
+- [Latest Published Release Notes](docs/releases/RELEASE_NOTES_0.1.4_PREVIEW.md)
 
 The preview build is ad-hoc signed and not notarized. If macOS blocks the first launch, the DMG includes `首次打开帮助.txt` with step-by-step fixes for `Open Anyway`, Finder right-click `Open`, and quarantine removal.
 
 ## Why Chiselo
 
-- HTML stays the primary asset.
+- HTML stays the editable source document.
 - The browser-rendered page stays the source of truth.
-- Chiselo adds direct visual editing on top of the real DOM.
-- HTML, PDF, and PPTX are delivery formats, not the product identity.
+- Chiselo adds object-level visual finishing controls on top of the rendered document.
+- Delivery checks and exports focus on HTML/PDF/PPTX quality.
+- Generated HTML is supported as one source, not the product identity.
 
 ## What You Can Do
 
-- Open `.html`, `.htm`, `.xhtml`, `.aislide`, and `.json` files.
+- Open HTML documents and Chiselo project files (`.html`, `.htm`, `.xhtml`, `.aislide`, `.json`).
 - Drag HTML files into the app window or onto `Chiselo.app`.
-- Click directly on the rendered HTML body to select real DOM elements.
+- Click directly on the rendered page to select visible objects.
 - Double-click text in place to edit it.
 - Drag, resize, align, nudge, duplicate, delete, and reorder elements.
-- Multi-select real DOM nodes with Shift/Cmd-click.
+- Multi-select page objects with Shift/Cmd-click.
 - Replace images with embedded PNG/JPG/GIF/SVG/WebP data URLs.
 - Edit tables, including safer handling for `rowspan` and `colspan`.
 - Run a delivery check for broken resources, SVG usage, clean HTML export, text overflow, out-of-bounds elements, and overlaps.
@@ -50,7 +54,7 @@ The preview build is ad-hoc signed and not notarized. If macOS blocks the first 
 ## Typical Workflow
 
 1. Open Chiselo.
-2. Drag in an AI-generated HTML file.
+2. Drag in an existing or generated HTML file.
 3. Click a visible element on the page.
 4. Edit text, move layout, adjust objects, replace images, and fix tables.
 5. Run the delivery check.
@@ -63,7 +67,7 @@ User docs:
 
 ## Product Status
 
-Chiselo is an early preview. It already edits real HTML DOM nodes, but complex scripts, responsive layouts, pseudo-elements, animations, cross-origin resources, and perfect multi-format output are still active research areas.
+Chiselo is an early preview. It already edits rendered HTML objects and saves changes back to HTML, but complex scripts, responsive layouts, pseudo-elements, animations, cross-origin resources, and perfect multi-format output are still active research areas.
 
 PDF remains the recommended final format when maximum fidelity matters.
 
@@ -71,9 +75,9 @@ PDF remains the recommended final format when maximum fidelity matters.
 
 Chiselo is intentionally transparent about how it was made. The project was started by a humanities-background creator using vibe coding with AI assistance, especially Codex and GPT.
 
-That history matters because the product is not trying to look like a generic internal tool. It is trying to make AI-generated HTML genuinely editable and usable for more people.
+That history matters, but Chiselo's product scope is deliberately clear: make HTML pages and visual documents easier to refine, inspect, export, and hand off.
 
-If Chiselo helps you or you are interested in AI-generated HTML, visual editing, or AI-native software creation, please star the repository so more people can find the project.
+If Chiselo helps you or you are interested in precise HTML editing and visual delivery workflows, please star the repository so more people can find the project.
 
 ## Docs
 
@@ -105,7 +109,7 @@ Chiselo/                  macOS SwiftUI app and exporter
 assets/                   screenshots and repository media
 config/                   design and packaging configuration
 docs/                     user docs, developer docs, and release notes
-examples/                 sample .aislide and HTML fixtures
+examples/                 sample Chiselo project and HTML fixtures
 scripts/                  QA, export, icon, demo, and packaging scripts
 ```
 

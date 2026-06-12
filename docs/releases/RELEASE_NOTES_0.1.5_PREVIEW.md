@@ -1,25 +1,24 @@
-# Chiselo 0.1.4 Preview
+# Chiselo 0.1.5 Preview
 
 Chiselo is a native macOS app for refining and delivering HTML pages and visual documents.
 
-中文：Chiselo 是一款 HTML 精修与交付工具。打开现有或生成的 HTML 页面/文档，调整文字、图片、表格、模块和版式，然后导出可交付文件。
+中文：Chiselo 是一款 HTML 精修与交付工具。打开现有或生成的 HTML 页面/文档，调整文字、图片、表格、模块和版式，交付前预检问题，然后导出干净 HTML、高保真 PDF 或尽量可编辑的 PPTX。
 
 Creator note: Chiselo was built through vibe coding by a humanities-background creator who does not come from a programming background. Thanks to Codex and GPT for making this kind of software exploration possible.
 
-## What Changed In 0.1.4
+## What Changed In 0.1.5
 
-- Added safer real-file editing for local HTML and Chiselo project files.
-- Opening a real file now creates a one-time sibling `.chiselo-backup` copy and keeps any existing backup instead of replacing it.
-- Saving over an existing HTML or Chiselo project file now writes a timestamped snapshot into a sibling `.chiselo-history/` folder before overwriting.
-- Added toolbar actions to reveal the current file's backup/history folder and restore the newest saved snapshot with confirmation.
-- Added a safe-file-history regression test covering backup preservation and same-second snapshot ordering.
-- Kept the generated fixture editing regression passing for 3 HTML pages and a 10-page Chiselo project fixture: text edits, image replacement, module movement, table edits, project edits, duplicate/delete, and clean export.
+- Repositioned Chiselo around HTML finishing and delivery instead of generated-HTML-only, slide-only, or blank-project authoring workflows.
+- Updated app language toward page refinement, canvas refinement, delivery preflight, object structure, and Chiselo project files.
+- Kept generated HTML as one supported input source without making it the product identity.
+- Clarified the intended workflow: identify document structure, refine objects precisely, check delivery risks, export HTML/PDF/PPTX, and review or restore earlier versions.
+- Updated packaging and publishing docs for the `0.1.5` preview build.
 
 ## Who This Preview Is For
 
-- People who already have an HTML page, document, poster, dashboard, or presentation-like file.
-- People working with generated HTML and then needing a fast visual editing pass.
-- People who want extra protection before editing real local files instead of only working on copies.
+- People who already have an HTML page, document, report, dashboard, poster, or presentation-like file.
+- People who receive generated HTML and need a precise second-pass editing and delivery tool.
+- People who want delivery checks before exporting HTML, PDF, or PPTX.
 - Personal, educational, research, evaluation, and non-commercial hobby users.
 
 Commercial use is not allowed under the included license.
@@ -28,21 +27,22 @@ Commercial use is not allowed under the included license.
 
 - Open HTML documents and Chiselo project files (`.html`, `.htm`, `.xhtml`, `.aislide`, `.json`).
 - Drag HTML files into the app.
-- Select visible rendered objects directly on the canvas.
+- Select visible page objects directly on the canvas.
 - Edit text in place.
 - Move, resize, align, duplicate, delete, and adjust layer order.
 - Multi-select page objects with Shift/Cmd-click.
 - Replace images with embedded PNG/JPG/GIF/SVG/WebP data URLs.
 - Edit tables, including safer handling for `rowspan` and `colspan`.
+- Show page/canvas boundaries, center lines, ruler ticks, snapping guides, and distribution controls.
 - Run delivery checks for broken resources, SVG usage, clean HTML export, text overflow, out-of-bounds elements, and overlaps.
-- Restore recent save snapshots from `.chiselo-history/`.
+- Restore save snapshots from `.chiselo-history/`.
 - Export clean standalone HTML.
 - Export high-fidelity PDF.
 - Export best-effort object-editable PPTX.
 
 ## Install
 
-1. Download `Chiselo-0.1.4.dmg`.
+1. Download `Chiselo-0.1.5.dmg` after the GitHub Release asset is published.
 2. Open the DMG.
 3. Drag `Chiselo.app` to `Applications`.
 4. Launch Chiselo.

@@ -1,8 +1,8 @@
 # Chiselo 0.1.1 Preview
 
-Chiselo is a native macOS app for polishing existing or AI-generated HTML with an Office-like visual editing layer and multi-format output.
+Chiselo is a native macOS app for refining and delivering HTML pages and visual documents.
 
-中文：Chiselo 用来打磨你的 HTML。HTML 是主资产，Chiselo 在真实浏览器渲染之上提供类似 Office / PPT 的可视化编辑层，让你快速修文字、修布局、调元素，然后导出可交付文件。
+中文：Chiselo 是一款 HTML 精修与交付工具。打开现有或生成的 HTML 页面/文档，调整文字、图片、表格、模块和版式，然后导出可交付文件。
 
 Creator note: Chiselo was built through vibe coding by a humanities-background creator who does not come from a programming background. Thanks to Codex and GPT for making this kind of software exploration possible.
 
@@ -16,20 +16,20 @@ Creator note: Chiselo was built through vibe coding by a humanities-background c
 
 ## Who This Preview Is For
 
-- People who already have an HTML page, document, poster, dashboard, or HTML slide-style presentation.
-- People using AI to generate HTML and then needing a fast visual editing pass.
+- People who already have an HTML page, document, poster, dashboard, or presentation-like file.
+- People working with generated HTML and then needing a fast visual editing pass.
 - Personal, educational, research, evaluation, and non-commercial hobby users.
 
 Commercial use is not allowed under the included license.
 
 ## Highlights
 
-- Open `.html`, `.htm`, `.xhtml`, `.aislide`, and `.json` files.
+- Open HTML documents and Chiselo project files (`.html`, `.htm`, `.xhtml`, `.aislide`, `.json`).
 - Drag HTML files into the app.
-- Select real rendered DOM elements directly on the canvas.
+- Select visible rendered objects directly on the canvas.
 - Edit text in place.
 - Move, resize, align, duplicate, delete, and adjust layer order.
-- Use a DOM tree fallback for nested selections.
+- Use an object-structure fallback for nested selections.
 - Replace images with embedded data URLs.
 - Edit table rows, columns, cells, and common table styles.
 - Run delivery checks for broken resources, clean HTML export, SVG/table notices, overflow, out-of-bounds elements, and obvious overlaps.

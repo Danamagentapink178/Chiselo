@@ -6,7 +6,7 @@ Chiselo is a non-commercial, source-available project. By contributing, you agre
 
 ## Ground Rules
 
-- Keep the product goal clear: HTML is the primary asset, Chiselo adds an Office-like visual editing layer, and HTML/PDF/PPTX are delivery formats.
+- Keep the product goal clear: Chiselo is an HTML finishing and delivery tool, focused on precise visual refinement, delivery checks, and HTML/PDF/PPTX export.
 - Prefer small, testable changes.
 - Do not add commercial-only dependencies or license-incompatible code.
 - Do not paste proprietary code or private documents into issues or pull requests.

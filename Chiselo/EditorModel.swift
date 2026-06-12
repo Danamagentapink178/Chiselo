@@ -895,11 +895,11 @@ final class EditorModel: ObservableObject {
         }
 
         guard let json = deckJSON else {
-            status = "当前没有可保存的结构化页面"
+            status = "当前没有可保存的固定画布项目"
             return
         }
 
-        guard let url = openedURL ?? chooseSaveURL(defaultName: "deck.aislide", contentTypes: deckContentTypes) else { return }
+        guard let url = openedURL ?? chooseSaveURL(defaultName: "chiselo-project.aislide", contentTypes: deckContentTypes) else { return }
 
         do {
             let snapshotURL = try safeFileHistory.protectFileBeforeOverwrite(at: url, fallbackExtension: "aislide")
@@ -1152,7 +1152,7 @@ final class EditorModel: ObservableObject {
                     }
 
                     guard let json = result as? String, !json.isEmpty else {
-                        self.status = "冻结失败：没有生成对象化页面"
+                        self.status = "冻结失败：没有生成固定画布"
                         return
                     }
 
@@ -1383,11 +1383,11 @@ final class EditorModel: ObservableObject {
             htmlTree = []
             htmlDiagnostics = .empty
             refreshDocumentStats()
-            status = "结构化页面模式：\(openedURL?.lastPathComponent ?? "未命名")"
+            status = "画布精修：\(openedURL?.lastPathComponent ?? "未命名")"
             let base64 = data.base64EncodedString()
             runJavaScript("window.ChiseloEditor?.loadDeckFromBase64('\(base64)');")
         } catch {
-            status = "Invalid deck JSON: \(error.localizedDescription)"
+            status = "Chiselo 项目无效：\(error.localizedDescription)"
         }
     }
 

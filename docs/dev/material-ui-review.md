@@ -2,7 +2,7 @@
 
 Slogan: **Chisel your HTML**.
 
-Positioning: **HTML as the primary asset + an Office-like visual editing layer + multi-format output**.
+Positioning: **HTML finishing and delivery + object-level visual refinement + multi-format output**.
 
 ## Reference Style
 
@@ -19,7 +19,7 @@ The target visual language is a light Material-inspired system:
 
 - Added shared design tokens in `config/design-tokens.json`, generated into `Chiselo/MaterialTheme.swift` for SwiftUI and `Chiselo/Resources/Editor/design-tokens.css` for the Web editor.
 - Replaced the plain macOS toolbar with a branded Material toolbar using pill buttons and a mode capsule.
-- Restyled the left navigator with Material panel headers, elevated slide cards, and purple DOM labels.
+- Restyled the left navigator with Material panel headers, elevated page cards, and object labels.
 - Restyled the Inspector with a custom `MaterialGroupBoxStyle` so every control group becomes a white elevated component card.
 - Restyled number and text inputs with tinted backgrounds and bottom rules.
 - Restyled command buttons as compact rounded Material controls.
@@ -27,17 +27,17 @@ The target visual language is a light Material-inspired system:
 
 ## Product Fit
 
-This direction is appropriate for Chiselo because the app is not a rich text editor. It is an Office-like visual editing layer for AI-generated or existing HTML assets. The UI should emphasize:
+This direction is appropriate for Chiselo because the app is a finishing surface for existing or generated HTML pages and visual documents, not a blank-project authoring environment. The UI should emphasize:
 
-- Selecting real DOM nodes.
+- Selecting visible page objects.
 - Adjusting layout precisely.
 - Editing visual styles directly on the HTML asset.
 - Handling cards, tables, images, sections, and repeated page components.
 
 ## Remaining UI Opportunities
 
-- Add a compact top tab/segmented control for `Layout`, `Style`, `DOM`, and `Media`.
-- Add a breadcrumb component for selected DOM ancestry.
+- Add a compact top tab/segmented control for `Layout`, `Style`, `Structure`, and `Media`.
+- Add a breadcrumb component for selected object ancestry.
 - Add swatch pickers for the Material palette instead of free-form color strings only.
 - Add a zoom slider and page minimap using the same Material player/progress visual language.
-- Add better visual affordances for group selection and nested DOM targets.
+- Add better visual affordances for group selection and nested object targets.
