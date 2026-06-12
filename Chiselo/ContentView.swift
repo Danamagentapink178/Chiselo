@@ -752,7 +752,9 @@ private struct ExportPreflightPanel: View {
     }
 
     private var deckPreflightContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let editableSummary = model.deck?.editableVersionSummary
+
+        return VStack(alignment: .leading, spacing: 16) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ExportTargetScoreCard(
                     title: "HTML",
@@ -772,12 +774,16 @@ private struct ExportPreflightPanel: View {
                 )
                 ExportTargetScoreCard(
                     title: "PPTX",
-                    subtitle: "对象可编辑",
-                    score: 90,
+                    subtitle: editableSummary.map { "可编辑性 \($0.pptxEditabilityScore)%" } ?? "对象可编辑",
+                    score: editableSummary?.pptxEditabilityScore ?? 90,
                     icon: "rectangle.on.rectangle.angled",
-                    detail: "文本、图片和形状会尽量保留为可编辑对象。",
-                    color: scoreColor(90)
+                    detail: editableSummary?.pptxDetail ?? "文本、图片和形状会尽量保留为可编辑对象。",
+                    color: scoreColor(editableSummary?.pptxEditabilityScore ?? 90)
                 )
+            }
+
+            if let editableSummary {
+                EditableVersionQualityCard(summary: editableSummary, isExpanded: true)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -943,6 +949,207 @@ private struct PreflightNoteRow: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+    }
+}
+
+private struct EditableVersionSummary: Equatable {
+    var pageCount: Int
+    var totalObjects: Int
+    var editableTextCount: Int
+    var replaceableImageCount: Int
+    var adjustableShapeCount: Int
+    var approximatedCount: Int
+    var wholeObjectCount: Int
+    var iframeFallbackCount: Int
+    var canvasFallbackCount: Int
+    var pptxEditabilityScore: Int
+
+    var directEditableCount: Int {
+        editableTextCount + replaceableImageCount + adjustableShapeCount
+    }
+
+    var fallbackDetail: String {
+        if wholeObjectCount == 0 {
+            return "无整体 fallback 对象"
+        }
+
+        var parts: [String] = []
+        if iframeFallbackCount > 0 { parts.append("\(iframeFallbackCount) 个嵌入页面") }
+        if canvasFallbackCount > 0 { parts.append("\(canvasFallbackCount) 个画布") }
+        let other = wholeObjectCount - iframeFallbackCount - canvasFallbackCount
+        if other > 0 { parts.append("\(other) 个媒体/嵌入对象") }
+        return parts.joined(separator: "，")
+    }
+
+    var pptxDetail: String {
+        if pptxEditabilityScore >= 85 {
+            return "文本、图片和形状占比较高，PPTX 可编辑性较好。"
+        }
+        if pptxEditabilityScore >= 65 {
+            return "存在近似或整体对象，PPTX 导出后需要重点复核对象层级。"
+        }
+        return "整体 fallback 较多，PPTX 更适合复核版式，不宜期待完全可拆编辑。"
+    }
+
+    var qualityTitle: String {
+        if pptxEditabilityScore >= 85 { return "可编辑性较好" }
+        if pptxEditabilityScore >= 65 { return "可编辑性中等" }
+        return "需要复核"
+    }
+
+    var qualityIcon: String {
+        if pptxEditabilityScore >= 85 { return "checkmark.seal.fill" }
+        if pptxEditabilityScore >= 65 { return "exclamationmark.triangle.fill" }
+        return "rectangle.dashed"
+    }
+
+    var qualityColor: Color {
+        if pptxEditabilityScore >= 85 { return Color(red: 0.06, green: 0.52, blue: 0.26) }
+        if pptxEditabilityScore >= 65 { return Color(red: 0.78, green: 0.47, blue: 0.06) }
+        return MaterialTheme.accentDanger
+    }
+}
+
+private struct EditableVersionQualityCard: View {
+    var summary: EditableVersionSummary
+    var isExpanded: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 8) {
+                Image(systemName: summary.qualityIcon)
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(summary.qualityColor)
+                    .frame(width: 22, height: 22)
+                    .background(summary.qualityColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("可编辑版质量")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(MaterialTheme.ink)
+                    Text("\(summary.qualityTitle) · PPTX \(summary.pptxEditabilityScore)%")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(summary.qualityColor)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 6) {
+                EditableQualityMetric(value: "\(summary.editableTextCount)", label: "文本", icon: "textformat")
+                EditableQualityMetric(value: "\(summary.replaceableImageCount)", label: "图片", icon: "photo")
+                EditableQualityMetric(value: "\(summary.adjustableShapeCount)", label: "形状", icon: "square")
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 7) {
+                    PreflightNoteRow(icon: "square.grid.2x2", title: "直接可编辑对象", detail: "\(summary.directEditableCount) / \(summary.totalObjects) 个对象可直接改字、换图或调形状")
+                    PreflightNoteRow(icon: "wand.and.rays", title: "近似还原", detail: "\(summary.approximatedCount) 个伪元素或复杂视觉已转成近似对象")
+                    PreflightNoteRow(icon: "rectangle.dashed", title: "整体保真", detail: summary.fallbackDetail)
+                }
+            } else if summary.wholeObjectCount > 0 || summary.approximatedCount > 0 {
+                Text("\(summary.approximatedCount) 个近似对象，\(summary.wholeObjectCount) 个整体保真对象")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MaterialTheme.muted)
+                    .lineLimit(2)
+            } else {
+                Text("当前转换结果主要由可编辑文本、图片和形状组成。")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MaterialTheme.muted)
+                    .lineLimit(2)
+            }
+        }
+        .padding(12)
+        .background(MaterialTheme.surfaceStrong, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium))
+        .overlay(
+            RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium)
+                .stroke(summary.qualityColor.opacity(0.22), lineWidth: 1)
+        )
+        .shadow(color: MaterialTheme.shadow.opacity(0.10), radius: 8, x: 0, y: 3)
+    }
+}
+
+private struct EditableQualityMetric: View {
+    var value: String
+    var label: String
+    var icon: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .heavy))
+            Text(value)
+                .font(.system(size: 10, weight: .heavy))
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+        }
+        .foregroundStyle(MaterialTheme.primaryDark)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity)
+        .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+    }
+}
+
+private extension EditorDeck {
+    var editableVersionSummary: EditableVersionSummary? {
+        guard irVersion == "layout-ir-v1" || sourceKind == "runtime-html-snapshot" else { return nil }
+
+        let elements = slides.flatMap(\.elements)
+        guard !elements.isEmpty else { return nil }
+
+        var editableText = 0
+        var replaceableImages = 0
+        var adjustableShapes = 0
+        var approximated = 0
+        var wholeObjects = 0
+        var iframeFallbacks = 0
+        var canvasFallbacks = 0
+
+        for element in elements {
+            switch element.editability {
+            case "text-editable":
+                editableText += 1
+            case "replaceable":
+                replaceableImages += 1
+            case "style-editable":
+                adjustableShapes += 1
+            case "whole-object":
+                wholeObjects += 1
+                if element.tagName == "iframe" { iframeFallbacks += 1 }
+                if element.tagName == "canvas" { canvasFallbacks += 1 }
+            default:
+                break
+            }
+
+            if element.fidelity == "approximated" {
+                approximated += 1
+            }
+        }
+
+        let total = elements.count
+        let score = min(100, max(0,
+            100
+            - min(45, wholeObjects * 12)
+            - min(24, approximated * 4)
+            - max(0, total - editableText - replaceableImages - adjustableShapes - wholeObjects) * 2
+        ))
+
+        return EditableVersionSummary(
+            pageCount: slides.count,
+            totalObjects: total,
+            editableTextCount: editableText,
+            replaceableImageCount: replaceableImages,
+            adjustableShapeCount: adjustableShapes,
+            approximatedCount: approximated,
+            wholeObjectCount: wholeObjects,
+            iframeFallbackCount: iframeFallbacks,
+            canvasFallbackCount: canvasFallbacks,
+            pptxEditabilityScore: score
+        )
     }
 }
 
@@ -1310,6 +1517,10 @@ private struct DocumentNavigator: View {
                                 HTMLTreeList(nodes: model.htmlTree)
                             }
                         }
+                    }
+
+                    if let summary = model.deck?.editableVersionSummary {
+                        EditableVersionQualityCard(summary: summary, isExpanded: false)
                     }
 
                     ForEach(Array((model.deck?.slides ?? []).enumerated()), id: \.element.id) { index, slide in
