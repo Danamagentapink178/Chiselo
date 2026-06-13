@@ -2,6 +2,13 @@
 
 All notable changes to Chiselo will be documented here.
 
+## 0.1.10 - 2026-06-13
+
+- Added target lists for object-level visual changes so changed text, images, geometry, and style objects can be reviewed beyond the first changed object.
+- Added a `视觉变更复核` card in export preflight with next/previous object navigation before HTML/PDF/PPTX delivery.
+- Updated the sidebar delivery check to use the same visual-change target list for consistent object selection.
+- Bumped the packaging version to `0.1.10` for the next preview build.
+
 ## 0.1.9 - 2026-06-13
 
 - Added PPTX preflight `建议操作` repair actions for locating tables, SVG/vector objects, complex visual effects, and layered objects from the export panel.

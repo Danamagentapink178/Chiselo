@@ -2476,7 +2476,9 @@
   function applyDirectEditingAssist(node) {
     if (!node || node.matches?.("html,body")) return;
     if (isLikelySelectionBlockingOverlay(node)) {
-      node.dataset.chiseloSelectionPassThrough = "true";
+      if (node.dataset.chiseloSelectionPassThrough !== "true") {
+        node.dataset.chiseloSelectionPassThrough = "true";
+      }
     } else if (node.dataset.chiseloSelectionPassThrough === "true") {
       delete node.dataset.chiseloSelectionPassThrough;
     }
@@ -5567,6 +5569,7 @@ ${htmlSlides}
         runtimeRiskElementId: null,
         pptxEffectRiskElementId: null,
         visualChangeElementId: null,
+        visualChangeElementIds: [],
         issues: []
       };
     }
@@ -5686,6 +5689,7 @@ ${htmlSlides}
       runtimeRiskElementId: runtimeDiagnostics.runtimeRiskElementId,
       pptxEffectRiskElementId: pptxEffectDiagnostics.pptxEffectRiskElementId,
       visualChangeElementId: visualDiffDiagnostics.visualChangeElementId,
+      visualChangeElementIds: visualDiffDiagnostics.visualChangeElementIds,
       issues
     };
   }
@@ -5833,13 +5837,14 @@ ${htmlSlides}
 
   function collectVisualDiffDiagnostics(doc, issues) {
     if (!directVisualBaseline?.entries) {
-      return { visualChangeCount: 0, visualChangeElementId: null };
+      return { visualChangeCount: 0, visualChangeElementId: null, visualChangeElementIds: [] };
     }
 
     const current = captureDirectVisualSnapshot(doc);
     const changedKinds = new Set();
     let count = 0;
     let firstElementId = null;
+    const targetElementIds = [];
 
     for (const [key, currentEntry] of current.entries) {
       const baselineEntry = directVisualBaseline.entries.get(key);
@@ -5848,7 +5853,10 @@ ${htmlSlides}
 
       count += 1;
       changedKinds.add(changeKind);
-      if (!firstElementId) firstElementId = currentEntry.elementId;
+      if (currentEntry.elementId) {
+        if (!firstElementId) firstElementId = currentEntry.elementId;
+        targetElementIds.push(currentEntry.elementId);
+      }
     }
 
     for (const key of directVisualBaseline.entries.keys()) {
@@ -5868,7 +5876,11 @@ ${htmlSlides}
       });
     }
 
-    return { visualChangeCount: count, visualChangeElementId: firstElementId };
+    return {
+      visualChangeCount: count,
+      visualChangeElementId: firstElementId,
+      visualChangeElementIds: [...new Set(targetElementIds)]
+    };
   }
 
   function collectPPTXMappingDiagnostics(doc, context) {

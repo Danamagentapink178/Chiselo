@@ -16,7 +16,7 @@ The core idea:
 
 - Improve hover actions for images, text, tables, cards, and grouped objects.
 - Add group-internal alignment, equal spacing, and size matching for captured modules.
-- Add pixel-level visual save preview and screenshot diff before overwriting original HTML.
+- Add richer screenshot-based before/after preview before overwriting original HTML.
 - Strengthen table row/column editing for complex merged cells.
 - Improve SVG detection and export fallback.
 - Add deeper one-click repair actions for tables, vectors, effects, and whole-object fallbacks.
@@ -40,6 +40,7 @@ The core idea:
 - Non-technical style controls for typography, color, alignment, borders, radius, shadows, and image display modes.
 - PPTX effect-risk preflight for complex CSS visuals before export.
 - Object-level visual diff v1 against the opened HTML.
+- Visual-change review navigation in export preflight for stepping through changed objects before delivery.
 - PPTX editable-object report v1 before export, including first-object click-through targeting and next/previous object review navigation.
 - PPTX preflight repair-action panel for locating risky objects, converting to editable version, and choosing PDF for high-fidelity fallback.
 

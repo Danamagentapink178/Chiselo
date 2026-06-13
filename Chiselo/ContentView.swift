@@ -711,6 +711,12 @@ private struct ExportPreflightPanel: View {
             }
 
             PreflightRecommendationCard(diagnostics: diagnostics)
+            if (diagnostics.visualChangeCount ?? 0) > 0 {
+                VisualChangeReviewCard(diagnostics: diagnostics) { elementId in
+                    dismiss()
+                    model.selectHTMLNode(id: elementId)
+                }
+            }
             PPTXMappingReportCard(diagnostics: diagnostics) { elementId in
                 dismiss()
                 model.selectHTMLNode(id: elementId)
@@ -945,6 +951,78 @@ private struct PreflightRecommendationCard: View {
             items.append(("viewfinder", "脚本渲染、嵌入页面或画布内容不一定能拆成普通对象。需要像交付稿一样稳定微调时，优先转为可编辑版再精修。", Color(red: 0.78, green: 0.47, blue: 0.06)))
         }
         return items
+    }
+}
+
+private struct VisualChangeReviewCard: View {
+    var diagnostics: HTMLDiagnostics
+    var onSelectTarget: (String) -> Void
+
+    @State private var targetIndex = 0
+
+    var body: some View {
+        let changeCount = diagnostics.visualChangeCount ?? 0
+        let targetIds = diagnostics.visualChangeTargetIds
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "rectangle.2.swap")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(warningColor)
+                    .frame(width: 22, height: 22)
+                    .background(warningColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("视觉变更复核")
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundStyle(MaterialTheme.ink)
+                    Text(targetIds.isEmpty ? "\(changeCount) 处变化，含不可定位对象" : "\(changeCount) 处变化，\(targetIds.count) 处可定位")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(warningColor)
+                }
+
+                Spacer()
+            }
+
+            Text("导出前逐项确认改动范围，避免误改文字、图片、尺寸、位置或关键样式。")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(MaterialTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !targetIds.isEmpty {
+                PPTXTargetNavigator(
+                    title: "视觉变更",
+                    icon: "rectangle.2.swap",
+                    count: changeCount,
+                    targetIds: targetIds,
+                    color: warningColor,
+                    index: $targetIndex,
+                    onSelectTarget: onSelectTarget
+                )
+            } else {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundStyle(MaterialTheme.muted)
+                    Text("这次变化主要来自已删除或无法定位的对象，请结合画面和历史版本复核。")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(MaterialTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+            }
+        }
+        .padding(14)
+        .background(MaterialTheme.surfaceStrong, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium))
+        .overlay(
+            RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium)
+                .stroke(warningColor.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private var warningColor: Color {
+        Color(red: 0.78, green: 0.47, blue: 0.06)
     }
 }
 
@@ -1723,6 +1801,10 @@ private extension HTMLDiagnostics {
         normalizedTargetIds(pptxFallbackElementIds, fallback: pptxFallbackElementId)
     }
 
+    var visualChangeTargetIds: [String] {
+        normalizedTargetIds(visualChangeElementIds, fallback: visualChangeElementId)
+    }
+
     var runtimeCompatibilityDetail: String {
         let risks = runtimeCompatibilityRiskCount
         if risks == 0 {
@@ -2261,9 +2343,9 @@ private struct HTMLDeliveryCheckCard: View {
                         title: "视觉变更",
                         detail: "\(diagnostics.visualChangeCount ?? 0) 个对象相对打开时变化",
                         color: warningColor,
-                        isClickable: diagnostics.visualChangeElementId != nil
+                        isClickable: !diagnostics.visualChangeTargetIds.isEmpty
                     ) {
-                        if let elementId = diagnostics.visualChangeElementId {
+                        if let elementId = diagnostics.visualChangeTargetIds.first {
                             model.selectHTMLNode(id: elementId)
                         }
                     }

@@ -60,7 +60,7 @@ Some HTML pages are script-rendered rather than plain static documents. Chiselo 
 
 Use `导出` > `导出预检` before final delivery. The preflight panel scores HTML readiness, PDF fidelity, and PPTX editability, then lists the issues that should be fixed before export or reviewed after PPTX export.
 
-Chiselo also shows an object-level visual diff against the file as it looked when opened. It tracks changed text, images, position, size, and key visual styles so you can review what actually changed before delivery.
+Chiselo also shows an object-level visual diff against the file as it looked when opened. It tracks changed text, images, position, size, and key visual styles so you can review what actually changed before delivery. When changes are detected, `视觉变更复核` lets you step through the changed objects with `上一处` / `下一处` before exporting.
 
 For PPTX, the preflight panel shows a `PPTX 可编辑对象` report. It estimates how many visible objects can remain as editable text, images, and simple shapes, and separates objects that need manual review or may have to stay as whole-object fallbacks. Click a non-zero count to jump to the first matching object before export, then use `上一处` / `下一处` in `逐项定位` to review matching objects one by one.
 

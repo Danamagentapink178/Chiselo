@@ -154,6 +154,7 @@ struct HTMLDiagnostics: Codable, Equatable {
     var runtimeRiskElementId: String?
     var pptxEffectRiskElementId: String?
     var visualChangeElementId: String?
+    var visualChangeElementIds: [String]?
     var issues: [HTMLDiagnosticIssue]?
 
     static let empty = HTMLDiagnostics(
@@ -204,6 +205,7 @@ struct HTMLDiagnostics: Codable, Equatable {
         runtimeRiskElementId: nil,
         pptxEffectRiskElementId: nil,
         visualChangeElementId: nil,
+        visualChangeElementIds: [],
         issues: []
     )
 
