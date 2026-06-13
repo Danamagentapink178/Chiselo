@@ -739,7 +739,9 @@ final class EditorModel: ObservableObject {
             stroke: bridgeString(object["stroke"]),
             strokeWidth: bridgeDouble(object["strokeWidth"]),
             radius: bridgeDouble(object["radius"]),
-            textAlign: bridgeString(object["textAlign"])
+            shadow: bridgeString(object["shadow"]),
+            textAlign: bridgeString(object["textAlign"]),
+            objectFit: bridgeString(object["objectFit"])
         )
     }
 

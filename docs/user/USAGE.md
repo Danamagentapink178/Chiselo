@@ -28,6 +28,14 @@ For repeated HTML objects, use `子对象` or `同类` in the `精修` panel to 
 
 When an object is selected, the `几何` panel shows its distance to the current page/canvas edges and its center offset. Use `复制几何` to copy position, size, margins, and center offset for before/after review.
 
+## Visual Style
+
+Use the `样式` panel to adjust selected objects without editing CSS. Text objects expose font size, weight, line height, color swatches, exact color values, and left/center/right alignment.
+
+Use `外观` for fill, border color, border width, corner radius, and shadow presets. These controls apply to direct HTML selections and to objects created by `转为可编辑版`.
+
+When an image is selected, use `显示方式` to choose `裁切`, `完整`, or `拉伸`, then replace the image if needed. Chiselo writes these choices back into the exported HTML instead of keeping them as editor-only state.
+
 ## Safe Saving
 
 When opening a real local HTML or Chiselo project file, Chiselo creates a one-time sibling backup named like `filename.chiselo-backup.html` or `filename.chiselo-backup.aislide`. If that backup already exists, Chiselo keeps it instead of replacing it.

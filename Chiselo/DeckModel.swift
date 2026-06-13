@@ -67,7 +67,9 @@ struct EditorElementStyle: Codable, Equatable {
     var stroke: String?
     var strokeWidth: Double?
     var radius: Double?
+    var shadow: String?
     var textAlign: String?
+    var objectFit: String?
 }
 
 struct BridgeSelectionMessage: Decodable {

@@ -749,21 +749,27 @@
     node.style.lineHeight = `${style.lineHeight || 1.2}`;
     node.style.color = style.color || "#111827";
     node.style.textAlign = style.textAlign || "left";
+    node.style.background = style.fill || "transparent";
+    node.style.border = `${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`;
+    node.style.borderRadius = `${style.radius || 0}px`;
+    node.style.boxShadow = shadowValue(style.shadow);
   }
 
   function applyShapeStyle(node, style) {
     node.style.background = style.fill || "#ffffff";
     node.style.border = `${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`;
     node.style.borderRadius = `${style.radius || 0}px`;
+    node.style.boxShadow = shadowValue(style.shadow);
   }
 
   function applyImageStyle(node, style) {
     node.style.width = "100%";
     node.style.height = "100%";
     node.style.display = "block";
-    node.style.objectFit = "cover";
+    node.style.objectFit = objectFitValue(style.objectFit, "cover");
     node.style.border = `${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`;
     node.style.borderRadius = `${style.radius || 0}px`;
+    node.style.boxShadow = shadowValue(style.shadow);
   }
 
   function updateSelectionBox() {
@@ -2025,6 +2031,22 @@
     const style = node.ownerDocument.defaultView.getComputedStyle(node);
     const semantic = directSemanticForNode(node);
     const frame = directElementFramePayload(node);
+    const payloadStyle = {
+      fontFamily: style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif",
+      fontSize: parseFloat(style.fontSize) || 16,
+      fontWeight: fontWeightNumber(style.fontWeight),
+      lineHeight: style.lineHeight === "normal" ? 1.2 : Math.max(0.8, (parseFloat(style.lineHeight) || 19.2) / (parseFloat(style.fontSize) || 16)),
+      color: style.color || "#111827",
+      fill: isTransparent(style.backgroundColor) ? "transparent" : style.backgroundColor,
+      stroke: firstBorderColor(style),
+      strokeWidth: firstBorderWidth(style),
+      radius: parseFloat(style.borderTopLeftRadius) || 0,
+      textAlign: textAlignValue(style.textAlign)
+    };
+    const shadow = shadowValue(style.boxShadow);
+    if (shadow !== "none") payloadStyle.shadow = shadow;
+    if (node.matches?.("img")) payloadStyle.objectFit = objectFitValue(style.objectFit, "fill");
+
     return {
       id: ensureDirectId(node),
       type: "html",
@@ -2043,18 +2065,7 @@
       rotation: rotationFromTransform(style.transform),
       z: parseFloat(style.zIndex) || 0,
       text: normalizedText(node),
-      style: {
-        fontFamily: style.fontFamily || "-apple-system, BlinkMacSystemFont, sans-serif",
-        fontSize: parseFloat(style.fontSize) || 16,
-        fontWeight: fontWeightNumber(style.fontWeight),
-        lineHeight: style.lineHeight === "normal" ? 1.2 : Math.max(0.8, (parseFloat(style.lineHeight) || 19.2) / (parseFloat(style.fontSize) || 16)),
-        color: style.color || "#111827",
-        fill: isTransparent(style.backgroundColor) ? "transparent" : style.backgroundColor,
-        stroke: firstBorderColor(style),
-        strokeWidth: firstBorderWidth(style),
-        radius: parseFloat(style.borderTopLeftRadius) || 0,
-        textAlign: textAlignValue(style.textAlign)
-      }
+      style: payloadStyle
     };
   }
 
@@ -3818,6 +3829,12 @@
     }
 
     if (Number.isFinite(style.radius)) node.style.borderRadius = `${Math.max(0, style.radius)}px`;
+    if (style.shadow) node.style.boxShadow = shadowValue(style.shadow);
+
+    if (style.objectFit) {
+      const image = node.matches?.("img") ? node : node.querySelector?.("img");
+      if (image) image.style.objectFit = objectFitValue(style.objectFit, "cover");
+    }
   }
 
   function applyDirectImageMetadata(node, nextElement) {
@@ -3921,7 +3938,8 @@
     pushHistory();
     image.style.width = "100%";
     image.style.height = "100%";
-    image.style.objectFit = style.objectFit || "contain";
+    image.style.objectFit = objectFitValue(style.objectFit, "contain");
+    if (style.shadow) image.style.boxShadow = shadowValue(style.shadow);
     selectDirectNode(image);
     scheduleHTMLTreeChanged();
     postSelectionChanged();
@@ -4858,7 +4876,8 @@
         fill: cssBackground(style),
         stroke: firstBorderColor(style),
         strokeWidth: firstBorderWidth(style),
-        radius: parseFloat(style.borderTopLeftRadius) || 0
+        radius: parseFloat(style.borderTopLeftRadius) || 0,
+        ...(shadowValue(style.boxShadow) !== "none" ? { shadow: shadowValue(style.boxShadow) } : {})
       }
     };
   }
@@ -4891,7 +4910,9 @@
       style: {
         stroke: firstBorderColor(style),
         strokeWidth: firstBorderWidth(style),
-        radius: parseFloat(style.borderTopLeftRadius) || 0
+        radius: parseFloat(style.borderTopLeftRadius) || 0,
+        objectFit: objectFitValue(style.objectFit, "fill"),
+        ...(shadowValue(style.boxShadow) !== "none" ? { shadow: shadowValue(style.boxShadow) } : {})
       }
     };
   }
@@ -5031,7 +5052,8 @@
         fill: cssBackground(style),
         stroke: firstBorderColor(style),
         strokeWidth: firstBorderWidth(style),
-        radius: parseFloat(style.borderTopLeftRadius) || 0
+        radius: parseFloat(style.borderTopLeftRadius) || 0,
+        ...(shadowValue(style.boxShadow) !== "none" ? { shadow: shadowValue(style.boxShadow) } : {})
       }
     };
   }
@@ -5065,7 +5087,9 @@
         fill: imageSource ? "transparent" : fallbackFillForNode(tag),
         stroke: firstBorderColor(style),
         strokeWidth: firstBorderWidth(style),
-        radius: parseFloat(style.borderTopLeftRadius) || 0
+        radius: parseFloat(style.borderTopLeftRadius) || 0,
+        ...(imageSource ? { objectFit: objectFitValue(style.objectFit, "fill") } : {}),
+        ...(shadowValue(style.boxShadow) !== "none" ? { shadow: shadowValue(style.boxShadow) } : {})
       }
     };
 
@@ -5203,6 +5227,8 @@
     if (element.sourceKind === "pseudo-element") return false;
     const fill = String(element.style?.fill || "").toLowerCase();
     const strokeWidth = Number(element.style?.strokeWidth || 0);
+    const shadow = shadowValue(element.style?.shadow);
+    if (shadow !== "none") return false;
     if ((fill === "transparent" || isTransparentColor(fill)) && strokeWidth <= 0) return true;
 
     return accepted.some((other) => {
@@ -5271,6 +5297,18 @@
   function textAlignValue(value) {
     if (value === "center" || value === "right") return value;
     return "left";
+  }
+
+  function shadowValue(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized || normalized.toLowerCase() === "none") return "none";
+    return normalized;
+  }
+
+  function objectFitValue(value, fallback = "cover") {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (["contain", "cover", "fill", "none", "scale-down"].includes(normalized)) return normalized;
+    return fallback;
   }
 
   function normalizedText(node) {
@@ -6004,7 +6042,11 @@ ${htmlSlides}
         `font-weight:${style.fontWeight || 400}`,
         `line-height:${style.lineHeight || 1.2}`,
         `color:${style.color || "#111827"}`,
-        `text-align:${style.textAlign || "left"}`
+        `text-align:${style.textAlign || "left"}`,
+        `background:${style.fill || "transparent"}`,
+        `border:${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`,
+        `border-radius:${style.radius || 0}px`,
+        `box-shadow:${shadowValue(style.shadow)}`
       ].join(";");
 
       return `    <div class="element" style="${base}"><div class="text-content" style="${textStyle}">${escapeHTML(element.text || "")}</div></div>`;
@@ -6016,9 +6058,10 @@ ${htmlSlides}
         "width:100%",
         "height:100%",
         "display:block",
-        "object-fit:cover",
+        `object-fit:${objectFitValue(style.objectFit, "cover")}`,
         `border:${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`,
-        `border-radius:${style.radius || 0}px`
+        `border-radius:${style.radius || 0}px`,
+        `box-shadow:${shadowValue(style.shadow)}`
       ].join(";");
       return `    <div class="element" style="${base}"><img class="image-content" src="${escapeHTML(element.imageSource || "")}" alt="${escapeHTML(element.imageAlt || "")}" style="${imageStyle}"></div>`;
     }
@@ -6027,7 +6070,8 @@ ${htmlSlides}
     const shapeStyle = [
       `background:${style.fill || "#ffffff"}`,
       `border:${style.strokeWidth || 0}px solid ${style.stroke || "transparent"}`,
-      `border-radius:${style.radius || 0}px`
+      `border-radius:${style.radius || 0}px`,
+      `box-shadow:${shadowValue(style.shadow)}`
     ].join(";");
 
     return `    <div class="element" style="${base}"><div class="shape-content" style="${shapeStyle}"></div></div>`;

@@ -2655,20 +2655,30 @@ private struct InspectorPanel: View {
     }
 
     private var textStyleGroup: some View {
-        GroupBox("文字样式") {
-            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-                GridRow {
-                    NumberField(label: "字号", value: styleDoubleBinding(\.fontSize, defaultValue: 16))
-                    NumberField(label: "字重", value: styleDoubleBinding(\.fontWeight, defaultValue: 400))
+        GroupBox("文字") {
+            VStack(alignment: .leading, spacing: 12) {
+                Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                    GridRow {
+                        NumberField(label: "字号", value: styleDoubleBinding(\.fontSize, defaultValue: 16))
+                        NumberField(label: "字重", value: styleDoubleBinding(\.fontWeight, defaultValue: 400))
+                    }
+                    GridRow {
+                        NumberField(label: "行高", value: styleDoubleBinding(\.lineHeight, defaultValue: 1.2), fractionLength: 2)
+                        StyleTextField(label: "字体名称", value: styleStringBinding(\.fontFamily, defaultValue: "-apple-system"))
+                    }
                 }
-                GridRow {
-                    NumberField(label: "行高", value: styleDoubleBinding(\.lineHeight, defaultValue: 1.2), fractionLength: 2)
-                    StyleTextField(label: "颜色", value: styleStringBinding(\.color, defaultValue: "#111827"))
-                }
-                GridRow {
-                    StyleTextField(label: "字体", value: styleStringBinding(\.fontFamily, defaultValue: "-apple-system"))
-                    StyleTextField(label: "对齐", value: styleStringBinding(\.textAlign, defaultValue: "left"))
-                }
+
+                styleColorSwatches(
+                    title: "文字颜色",
+                    value: styleStringBinding(\.color, defaultValue: "#111827"),
+                    presets: textColorPresets
+                )
+                StyleTextField(label: "精确颜色", value: styleStringBinding(\.color, defaultValue: "#111827"))
+                styleChoiceRow(
+                    title: "文字对齐",
+                    value: styleStringBinding(\.textAlign, defaultValue: "left"),
+                    options: textAlignmentPresets
+                )
             }
         }
     }
@@ -2689,6 +2699,11 @@ private struct InspectorPanel: View {
             VStack(spacing: 10) {
                 StyleTextField(label: "来源", value: imageSourceBinding(defaultValue: ""))
                 StyleTextField(label: "ALT", value: imageAltBinding(defaultValue: ""))
+                styleChoiceRow(
+                    title: "显示方式",
+                    value: styleStringBinding(\.objectFit, defaultValue: "cover"),
+                    options: imageFitPresets
+                )
 
                 if model.documentMode == "html" {
                     Button {
@@ -2704,16 +2719,33 @@ private struct InspectorPanel: View {
     }
 
     private var boxStyleGroup: some View {
-        GroupBox("盒子样式") {
-            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-                GridRow {
-                    StyleTextField(label: "填充", value: styleStringBinding(\.fill, defaultValue: "transparent"))
-                    StyleTextField(label: "描边", value: styleStringBinding(\.stroke, defaultValue: "transparent"))
+        GroupBox("外观") {
+            VStack(alignment: .leading, spacing: 12) {
+                styleColorSwatches(
+                    title: "填充",
+                    value: styleStringBinding(\.fill, defaultValue: "transparent"),
+                    presets: fillColorPresets
+                )
+                StyleTextField(label: "精确填充", value: styleStringBinding(\.fill, defaultValue: "transparent"))
+                styleColorSwatches(
+                    title: "描边",
+                    value: styleStringBinding(\.stroke, defaultValue: "transparent"),
+                    presets: strokeColorPresets
+                )
+                StyleTextField(label: "精确描边", value: styleStringBinding(\.stroke, defaultValue: "transparent"))
+
+                Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                    GridRow {
+                        NumberField(label: "边框", value: styleDoubleBinding(\.strokeWidth, defaultValue: 0))
+                        NumberField(label: "圆角", value: styleDoubleBinding(\.radius, defaultValue: 0))
+                    }
                 }
-                GridRow {
-                    NumberField(label: "边框", value: styleDoubleBinding(\.strokeWidth, defaultValue: 0))
-                    NumberField(label: "圆角", value: styleDoubleBinding(\.radius, defaultValue: 0))
-                }
+
+                styleChoiceRow(
+                    title: "阴影",
+                    value: styleStringBinding(\.shadow, defaultValue: "none"),
+                    options: shadowPresets
+                )
             }
         }
     }
@@ -2749,10 +2781,20 @@ private struct InspectorPanel: View {
     private var cellStyleGroup: some View {
         GroupBox("单元格样式") {
             VStack(spacing: 10) {
+                styleColorSwatches(
+                    title: "单元格填充",
+                    value: styleStringBinding(\.fill, defaultValue: "transparent"),
+                    presets: fillColorPresets
+                )
+                styleColorSwatches(
+                    title: "单元格文字",
+                    value: styleStringBinding(\.color, defaultValue: "#111827"),
+                    presets: textColorPresets
+                )
                 Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                     GridRow {
-                        StyleTextField(label: "填充", value: styleStringBinding(\.fill, defaultValue: "transparent"))
-                        StyleTextField(label: "文字", value: styleStringBinding(\.color, defaultValue: "#111827"))
+                        StyleTextField(label: "精确填充", value: styleStringBinding(\.fill, defaultValue: "transparent"))
+                        StyleTextField(label: "精确文字", value: styleStringBinding(\.color, defaultValue: "#111827"))
                     }
                     GridRow {
                         StyleTextField(label: "边框", value: styleStringBinding(\.stroke, defaultValue: "transparent"))
@@ -2760,9 +2802,15 @@ private struct InspectorPanel: View {
                     }
                     GridRow {
                         NumberField(label: "圆角", value: styleDoubleBinding(\.radius, defaultValue: 0))
-                        StyleTextField(label: "对齐", value: styleStringBinding(\.textAlign, defaultValue: "left"))
+                        StyleTextField(label: "精确对齐", value: styleStringBinding(\.textAlign, defaultValue: "left"))
                     }
                 }
+
+                styleChoiceRow(
+                    title: "单元格对齐",
+                    value: styleStringBinding(\.textAlign, defaultValue: "left"),
+                    options: textAlignmentPresets
+                )
 
                 Grid(horizontalSpacing: 8, verticalSpacing: 8) {
                     GridRow {
@@ -2934,6 +2982,93 @@ private struct InspectorPanel: View {
 
     private func supportsImageControls(_ element: EditorElement) -> Bool {
         element.type == "image" || selectedTagName == "img"
+    }
+
+    private var textAlignmentPresets: [StylePresetOption] {
+        [
+            StylePresetOption(title: "左", value: "left", icon: "text.alignleft"),
+            StylePresetOption(title: "中", value: "center", icon: "text.aligncenter"),
+            StylePresetOption(title: "右", value: "right", icon: "text.alignright")
+        ]
+    }
+
+    private var imageFitPresets: [StylePresetOption] {
+        [
+            StylePresetOption(title: "裁切", value: "cover", icon: "crop"),
+            StylePresetOption(title: "完整", value: "contain", icon: "rectangle.dashed"),
+            StylePresetOption(title: "拉伸", value: "fill", icon: "arrow.left.and.right")
+        ]
+    }
+
+    private var shadowPresets: [StylePresetOption] {
+        [
+            StylePresetOption(title: "无", value: "none", icon: "circle.slash"),
+            StylePresetOption(title: "柔和", value: "0 10px 24px rgba(15, 23, 42, 0.16)", icon: "square"),
+            StylePresetOption(title: "明显", value: "0 18px 44px rgba(15, 23, 42, 0.24)", icon: "square.fill")
+        ]
+    }
+
+    private var textColorPresets: [StyleColorPreset] {
+        [
+            StyleColorPreset(title: "深色", value: "#111827"),
+            StyleColorPreset(title: "灰色", value: "#4b5563"),
+            StyleColorPreset(title: "蓝色", value: "#0a84ff"),
+            StyleColorPreset(title: "红色", value: "#c0262d"),
+            StyleColorPreset(title: "白色", value: "#ffffff")
+        ]
+    }
+
+    private var fillColorPresets: [StyleColorPreset] {
+        [
+            StyleColorPreset(title: "透明", value: "transparent"),
+            StyleColorPreset(title: "白色", value: "#ffffff"),
+            StyleColorPreset(title: "浅灰", value: "#f3f6fb"),
+            StyleColorPreset(title: "浅蓝", value: "#e8f3ff"),
+            StyleColorPreset(title: "浅绿", value: "#eaf7ef"),
+            StyleColorPreset(title: "浅黄", value: "#fff6d8")
+        ]
+    }
+
+    private var strokeColorPresets: [StyleColorPreset] {
+        [
+            StyleColorPreset(title: "透明", value: "transparent"),
+            StyleColorPreset(title: "浅灰", value: "#d9e1e8"),
+            StyleColorPreset(title: "深灰", value: "#6b7280"),
+            StyleColorPreset(title: "蓝色", value: "#0a84ff"),
+            StyleColorPreset(title: "红色", value: "#c0262d")
+        ]
+    }
+
+    private func styleChoiceRow(title: String, value: Binding<String>, options: [StylePresetOption]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(MaterialTheme.primary)
+            HStack(spacing: 8) {
+                ForEach(options) { option in
+                    StyleChoiceButton(option: option, selection: value)
+                }
+            }
+        }
+    }
+
+    private func styleColorSwatches(title: String, value: Binding<String>, presets: [StyleColorPreset]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(MaterialTheme.primary)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 34, maximum: 38), spacing: 8)],
+                alignment: .leading,
+                spacing: 8
+            ) {
+                ForEach(presets) { preset in
+                    StyleSwatchButton(preset: preset, selection: value)
+                }
+            }
+        }
     }
 
     private func binding(_ keyPath: WritableKeyPath<EditorElement, Double>) -> Binding<Double> {
@@ -3380,6 +3515,102 @@ private extension HTMLTreeNode {
     }
 }
 
+private struct StylePresetOption: Identifiable {
+    var title: String
+    var value: String
+    var icon: String?
+
+    var id: String { value }
+}
+
+private struct StyleColorPreset: Identifiable {
+    var title: String
+    var value: String
+
+    var id: String { value }
+}
+
+private struct StyleChoiceButton: View {
+    var option: StylePresetOption
+    @Binding var selection: String
+
+    private var isSelected: Bool {
+        selection.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == option.value.lowercased()
+    }
+
+    var body: some View {
+        Button {
+            selection = option.value
+        } label: {
+            if let icon = option.icon {
+                Label(option.title, systemImage: icon)
+                    .frame(maxWidth: .infinity)
+            } else {
+                Text(option.title)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(MaterialButtonStyle(filled: isSelected, compact: true))
+    }
+}
+
+private struct StyleSwatchButton: View {
+    var preset: StyleColorPreset
+    @Binding var selection: String
+
+    private var isSelected: Bool {
+        selection.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == preset.value.lowercased()
+    }
+
+    var body: some View {
+        Button {
+            selection = preset.value
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall)
+                    .fill(swatchFill)
+                    .overlay(transparentPattern)
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundStyle(checkColor)
+                }
+            }
+            .frame(width: 34, height: 30)
+            .overlay(
+                RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall)
+                    .stroke(isSelected ? MaterialTheme.primary : MaterialTheme.separator, lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(preset.title)
+    }
+
+    private var swatchFill: Color {
+        cssColor(preset.value, fallback: MaterialTheme.surfaceTint)
+    }
+
+    @ViewBuilder
+    private var transparentPattern: some View {
+        if preset.value.lowercased() == "transparent" {
+            ZStack {
+                RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall)
+                    .fill(MaterialTheme.surfaceStrong)
+                Path { path in
+                    path.move(to: CGPoint(x: 7, y: 23))
+                    path.addLine(to: CGPoint(x: 27, y: 7))
+                }
+                .stroke(MaterialTheme.accentDanger.opacity(0.65), lineWidth: 2)
+            }
+        }
+    }
+
+    private var checkColor: Color {
+        preset.value.lowercased() == "#ffffff" || preset.value.lowercased() == "transparent" ? MaterialTheme.primaryDark : Color.white
+    }
+}
+
 private struct NumberField: View {
     var label: String
     @Binding var value: Double
@@ -3558,7 +3789,9 @@ private extension EditorElementStyle {
             stroke: nil,
             strokeWidth: nil,
             radius: nil,
-            textAlign: nil
+            shadow: nil,
+            textAlign: nil,
+            objectFit: nil
         )
     }
 }

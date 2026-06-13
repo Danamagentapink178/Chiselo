@@ -93,7 +93,9 @@
             "stroke": { "type": "string" },
             "strokeWidth": { "type": "number", "minimum": 0 },
             "radius": { "type": "number", "minimum": 0 },
-            "textAlign": { "enum": ["left", "center", "right"] }
+            "shadow": { "type": "string" },
+            "textAlign": { "enum": ["left", "center", "right"] },
+            "objectFit": { "enum": ["cover", "contain", "fill", "none", "scale-down"] }
           }
         }
       }

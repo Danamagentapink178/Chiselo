@@ -26,7 +26,7 @@ The core idea:
 - More reliable object grouping and ungrouping.
 - Layer panel with drag-to-reorder.
 - Export QA report explaining what could and could not map to editable PPTX.
-- More precise style controls for typography, color, spacing, borders, radius, and shadows.
+- More precise spacing and repeated-module consistency controls.
 
 ## Recently Landed
 
@@ -36,6 +36,7 @@ The core idea:
 - Visual history browser for `.chiselo-history/` snapshots.
 - Deterministic Layout IR conversion for stable precision editing.
 - Module grouping and module-group movement for converted editable versions.
+- Non-technical style controls for typography, color, alignment, borders, radius, shadows, and image display modes.
 
 ## Long Term
 

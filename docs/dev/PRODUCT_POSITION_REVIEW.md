@@ -31,6 +31,7 @@ Strongly aligned:
 - Image replacement with portable embedded resources.
 - Table editing.
 - Geometry controls, page/canvas boundaries, guides, snapping, and nudging.
+- Non-technical visual style controls for color, typography, alignment, borders, radius, shadows, and image display modes.
 - Delivery preflight for broken resources, overflow, out-of-bounds objects, overlap, clean HTML, PDF, and PPTX risks.
 - Safe backups and history restore.
 - `转为可编辑版` for converting the current rendering into stable editable objects.
@@ -40,7 +41,7 @@ Needs continued polishing:
 
 - More advanced group-internal alignment rules for mixed text/image/button modules.
 - More predictable resizing and layout preservation for responsive pages.
-- Better style controls for non-technical users: color, typography, spacing, borders, shadows.
+- Broader spacing and style consistency controls across mixed modules and repeated cards.
 - Higher-fidelity editable PPTX mapping and clearer export risk previews.
 - Better before/after diff and visual review before overwriting files.
 
@@ -70,7 +71,7 @@ Generated or script-rendered files may be supported as input, but they are not t
 
 ## Next Product Priorities
 
-1. More robust visual style controls for typography, color, border, radius, and shadow.
+1. Broader visual style controls for spacing, repeated-card consistency, and mixed module cleanup.
 2. More advanced group-internal alignment rules for mixed text/image/button modules.
 3. Export preflight improvements with object-level risk navigation and before/after review.
 4. PPTX editability improvements with clearer object mapping and fallback explanations.

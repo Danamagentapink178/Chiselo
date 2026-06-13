@@ -44,6 +44,7 @@ The preview build is ad-hoc signed and not notarized. If macOS blocks the first 
 - Click directly on the rendered page to select visible objects.
 - Double-click text in place to edit it.
 - Drag, resize, align, nudge, duplicate, delete, and reorder elements.
+- Refine typography, colors, borders, radius, shadows, and image display modes from the visual Inspector.
 - Multi-select page objects with Shift/Cmd-click.
 - Replace images with embedded PNG/JPG/GIF/SVG/WebP data URLs.
 - Edit tables, including safer handling for `rowspan` and `colspan`.

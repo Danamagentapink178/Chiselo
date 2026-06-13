@@ -72,6 +72,39 @@ final class ImportAdapterTest: NSObject, WKNavigationDelegate, WKScriptMessageHa
           const htmlTree = editor.getHTMLTree();
           const pageFrames = editor.getPageFrames();
           const pageBoundaryCount = document.querySelectorAll('.page-boundary').length;
+
+          editor.selectHTML('.gradient-box');
+          const boxBeforeStyle = editor.getSelection();
+          editor.updateElement({
+            ...boxBeforeStyle,
+            style: {
+              ...(boxBeforeStyle.style || {}),
+              fill: '#fff6d8',
+              stroke: '#0a84ff',
+              strokeWidth: 3,
+              radius: 16,
+              shadow: '0 10px 24px rgba(15, 23, 42, 0.16)',
+              textAlign: 'center'
+            }
+          });
+          const boxAfterStyle = editor.getSelection();
+          const boxStyledExport = editor.exportHTML();
+
+          editor.selectHTML('img.bad');
+          const imageBeforeStyle = editor.getSelection();
+          editor.updateElement({
+            ...imageBeforeStyle,
+            style: {
+              ...(imageBeforeStyle.style || {}),
+              objectFit: 'contain',
+              radius: 12,
+              shadow: '0 10px 24px rgba(15, 23, 42, 0.16)'
+            }
+          });
+          const imageAfterStyle = editor.getSelection();
+          const imageStyledExport = editor.exportHTML();
+
+          editor.selectHTML('#spanTable .merged');
           editor.command('tableAddColumnAfter');
           const afterAdd = editor.exportHTML();
           const afterAddDiagnostics = editor.getImportDiagnostics();
@@ -99,6 +132,11 @@ final class ImportAdapterTest: NSObject, WKNavigationDelegate, WKScriptMessageHa
             pageFrameDetected: pageFrames.length === 1 && pageFrames[0].w >= 900 && pageFrames[0].h >= 500,
             pageBoundaryRendered: pageBoundaryCount === pageFrames.length,
             backdropSwitcherWorks: gridBackdropApplied && dotsBackdropApplied && cleanBackdropApplied,
+            stylePanelBoxWriteback: boxAfterStyle.style.radius === 16 && boxAfterStyle.style.strokeWidth === 3,
+            stylePanelShadowExported: /box-shadow:/i.test(boxStyledExport) && boxStyledExport.includes('24px'),
+            stylePanelTextAlignExported: /text-align:\\s*center/i.test(boxStyledExport),
+            stylePanelImageFitWriteback: imageAfterStyle.style.objectFit === 'contain',
+            stylePanelImageFitExported: /object-fit:\\s*contain/i.test(imageStyledExport),
             spanTableDetected: before.spanTableCount === 1,
             mergedColumnExpanded: afterAdd.includes('colspan="3"'),
             mergedColumnRestored: afterDelete.includes('colspan="2"'),

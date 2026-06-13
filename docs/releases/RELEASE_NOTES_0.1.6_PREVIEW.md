@@ -11,6 +11,8 @@ Chiselo is a native macOS app for high-fidelity refinement and delivery of exist
 - Shows a quality summary for editable versions, including editable text, replaceable images, adjustable shapes, whole-object fallbacks, and PPTX editability.
 - Adds deterministic module grouping metadata so captured card, section, table, and visual-module objects can be recognized together.
 - Lets captured modules be selected as a group from the Inspector, then moved, nudged, aligned, snapped, duplicated, deleted, locked, or refined internally with same-width, same-height, and equal-spacing commands.
+- Adds a simpler style panel for precise finishing: color swatches, exact values, text alignment, border/radius controls, shadow presets, and image display modes.
+- Keeps shadow and image display choices through direct HTML edits, editable-version conversion, clean HTML export, and Chiselo project validation.
 - Shows editability metadata for captured objects, including directly editable text, replaceable images, adjustable shapes, approximated pseudo-elements, and iframe/canvas whole-object fallbacks.
 - Uses consistent page/slide boundary detection for editable capture and export.
 - Detects runtime roots, scripts, embedded pages, canvas regions, shadow components, external runtime resources, and transparent selection blockers.
