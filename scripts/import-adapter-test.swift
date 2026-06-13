@@ -138,6 +138,7 @@ final class ImportAdapterTest: NSObject, WKNavigationDelegate, WKScriptMessageHa
             stylePanelTextAlignExported: /text-align:\\s*center/i.test(boxStyledExport),
             stylePanelImageFitWriteback: imageAfterStyle.style.objectFit === 'contain',
             stylePanelImageFitExported: /object-fit:\\s*contain/i.test(imageStyledExport),
+            pptxMappingCountsDetected: before.pptxTextObjectCount >= 1 && before.pptxImageObjectCount === 1 && before.pptxReviewObjectCount >= 1,
             spanTableDetected: before.spanTableCount === 1,
             mergedColumnExpanded: afterAdd.includes('colspan="3"'),
             mergedColumnRestored: afterDelete.includes('colspan="2"'),

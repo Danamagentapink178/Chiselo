@@ -5539,6 +5539,11 @@ ${htmlSlides}
         runtimeRiskCount: 0,
         pptxEffectRiskCount: 0,
         visualChangeCount: 0,
+        pptxTextObjectCount: 0,
+        pptxImageObjectCount: 0,
+        pptxShapeObjectCount: 0,
+        pptxReviewObjectCount: 0,
+        pptxFallbackObjectCount: 0,
         cleanExport: true,
         textOverflowCount: 0,
         outOfBoundsCount: 0,
@@ -5560,6 +5565,7 @@ ${htmlSlides}
     const media = [...doc.querySelectorAll("video, audio")];
     const tables = [...doc.querySelectorAll("table")];
     const svgNodes = [...doc.querySelectorAll("svg")];
+    const svgCount = svgNodes.length + images.filter((image) => (image.getAttribute("src") || "").startsWith("data:image/svg")).length;
     const exported = exportDirectHTML();
     const issues = [];
     const runtimeDiagnostics = collectRuntimeCompatibilityDiagnostics(doc, issues);
@@ -5610,6 +5616,13 @@ ${htmlSlides}
     const pptxEffectDiagnostics = collectPPTXEffectDiagnostics(doc, issues);
     const visualDiffDiagnostics = collectVisualDiffDiagnostics(doc, issues);
     const layoutDiagnostics = collectLayoutDiagnostics(doc, issues);
+    const pptxMappingDiagnostics = collectPPTXMappingDiagnostics(doc, {
+      tableCount: tables.length,
+      svgCount,
+      runtimeDiagnostics,
+      pptxEffectDiagnostics,
+      layoutDiagnostics
+    });
     return {
       mode: editorMode,
       imageCount: images.length,
@@ -5617,7 +5630,7 @@ ${htmlSlides}
       embeddedImages: images.filter((image) => (image.getAttribute("src") || "").startsWith("data:")).length,
       mediaCount: media.length,
       brokenMedia: brokenMediaNodes.length,
-      svgCount: doc.querySelectorAll("svg").length + images.filter((image) => (image.getAttribute("src") || "").startsWith("data:image/svg")).length,
+      svgCount,
       tableCount: tables.length,
       spanTableCount: spanTables.length,
       scriptCount: runtimeDiagnostics.scriptCount,
@@ -5630,6 +5643,11 @@ ${htmlSlides}
       runtimeRiskCount: runtimeDiagnostics.runtimeRiskCount,
       pptxEffectRiskCount: pptxEffectDiagnostics.pptxEffectRiskCount,
       visualChangeCount: visualDiffDiagnostics.visualChangeCount,
+      pptxTextObjectCount: pptxMappingDiagnostics.pptxTextObjectCount,
+      pptxImageObjectCount: pptxMappingDiagnostics.pptxImageObjectCount,
+      pptxShapeObjectCount: pptxMappingDiagnostics.pptxShapeObjectCount,
+      pptxReviewObjectCount: pptxMappingDiagnostics.pptxReviewObjectCount,
+      pptxFallbackObjectCount: pptxMappingDiagnostics.pptxFallbackObjectCount,
       cleanExport,
       textOverflowCount: layoutDiagnostics.textOverflowCount,
       outOfBoundsCount: layoutDiagnostics.outOfBoundsCount,
@@ -5826,6 +5844,74 @@ ${htmlSlides}
     }
 
     return { visualChangeCount: count, visualChangeElementId: firstElementId };
+  }
+
+  function collectPPTXMappingDiagnostics(doc, context) {
+    const nodes = diagnosticLayoutNodes(doc).slice(0, MAX_HTML_DIAGNOSTIC_NODES);
+    let textCount = 0;
+    let imageCount = 0;
+    let shapeCount = 0;
+
+    for (const node of nodes) {
+      if (node.matches?.("script,style,meta,link,title,defs")) continue;
+      if (node.matches?.("table,thead,tbody,tfoot,tr,td,th,caption,svg,canvas,iframe")) continue;
+
+      if (node.matches?.("img")) {
+        imageCount += 1;
+        continue;
+      }
+
+      if (isPPTXTextObject(node)) {
+        textCount += 1;
+        continue;
+      }
+
+      if (isPPTXShapeObject(node)) {
+        shapeCount += 1;
+      }
+    }
+
+    const runtime = context.runtimeDiagnostics || {};
+    const reviewCount = Math.max(0,
+      Number(context.tableCount || 0)
+      + Number(context.svgCount || 0)
+      + Number(context.pptxEffectDiagnostics?.pptxEffectRiskCount || 0)
+      + Number(context.layoutDiagnostics?.overlapCount || 0)
+    );
+    const fallbackCount = Math.max(0,
+      Number(runtime.iframeCount || 0)
+      + Number(runtime.canvasCount || 0)
+      + Number(runtime.shadowRootCount || 0)
+      + Number(runtime.runtimeRootCount || 0)
+    );
+
+    return {
+      pptxTextObjectCount: textCount,
+      pptxImageObjectCount: imageCount,
+      pptxShapeObjectCount: shapeCount,
+      pptxReviewObjectCount: reviewCount,
+      pptxFallbackObjectCount: fallbackCount
+    };
+  }
+
+  function isPPTXTextObject(node) {
+    if (!directNodeAllowsTextEdit(node) || !normalizedText(node)) return false;
+    const tag = node.tagName.toLowerCase();
+    if (DIRECT_TEXT_BLOCK_SELECTOR.split(",").includes(tag)) return true;
+    return hasMeaningfulDirectText(node);
+  }
+
+  function isPPTXShapeObject(node) {
+    if (node.children.length > 0 && normalizedText(node)) return false;
+    const style = node.ownerDocument.defaultView.getComputedStyle(node);
+    if (pptxEffectRiskReason(style)) return false;
+    const fill = cssBackground(style);
+    const borderWidth = firstBorderWidth(style);
+    const hasFill = fill && fill !== "transparent" && !isTransparent(fill);
+    const hasBorder = borderWidth > 0.2 && !isTransparent(firstBorderColor(style));
+    const hasRadius = (parseFloat(style.borderTopLeftRadius) || 0) > 0.2;
+    const hasShadow = shadowValue(style.boxShadow) !== "none";
+    return hasFill || hasBorder || hasRadius || hasShadow;
   }
 
   function visualEntryChangeKind(before, after) {

@@ -711,6 +711,7 @@ private struct ExportPreflightPanel: View {
             }
 
             PreflightRecommendationCard(diagnostics: diagnostics)
+            PPTXMappingReportCard(diagnostics: diagnostics)
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("问题定位")
@@ -926,6 +927,82 @@ private struct PreflightRecommendationCard: View {
             items.append(("viewfinder", "脚本渲染、嵌入页面或画布内容不一定能拆成普通对象。需要像交付稿一样稳定微调时，优先转为可编辑版再精修。", Color(red: 0.78, green: 0.47, blue: 0.06)))
         }
         return items
+    }
+}
+
+private struct PPTXMappingReportCard: View {
+    var diagnostics: HTMLDiagnostics
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "rectangle.on.rectangle.angled")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(reportColor)
+                    .frame(width: 22, height: 22)
+                    .background(reportColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("PPTX 可编辑对象")
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundStyle(MaterialTheme.ink)
+                    Text("\(diagnostics.pptxEditableEstimate)% 预计可编辑")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(reportColor)
+                }
+                Spacer()
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                MappingMetric(value: "\(diagnostics.pptxTextObjectCount ?? 0)", label: "文字", icon: "textformat")
+                MappingMetric(value: "\(diagnostics.pptxImageObjectCount ?? 0)", label: "图片", icon: "photo")
+                MappingMetric(value: "\(diagnostics.pptxShapeObjectCount ?? 0)", label: "形状", icon: "square.on.circle")
+                MappingMetric(value: "\(diagnostics.pptxReviewObjectCount ?? 0)", label: "需复核", icon: "checklist")
+                MappingMetric(value: "\(diagnostics.pptxFallbackObjectCount ?? 0)", label: "整体对象", icon: "rectangle.dashed")
+                MappingMetric(value: "\(diagnostics.pptxMappingTotalObjectCount)", label: "合计", icon: "square.grid.2x2")
+            }
+
+            Text(diagnostics.pptxMappingRecommendation)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(MaterialTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(MaterialTheme.surfaceStrong, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium))
+        .overlay(
+            RoundedRectangle(cornerRadius: MaterialTheme.radiusMedium)
+                .stroke(reportColor.opacity(0.20), lineWidth: 1)
+        )
+    }
+
+    private var reportColor: Color {
+        if diagnostics.pptxFallbackObjectCount ?? 0 > 0 { return MaterialTheme.accentDanger }
+        if diagnostics.pptxReviewObjectCount ?? 0 > 0 { return Color(red: 0.78, green: 0.47, blue: 0.06) }
+        return Color(red: 0.06, green: 0.52, blue: 0.26)
+    }
+}
+
+private struct MappingMetric: View {
+    var value: String
+    var label: String
+    var icon: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .heavy))
+            Text(value)
+                .font(.system(size: 11, weight: .heavy))
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+        }
+        .foregroundStyle(MaterialTheme.primaryDark)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity)
+        .background(MaterialTheme.surfaceTint, in: RoundedRectangle(cornerRadius: MaterialTheme.radiusSmall))
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
     }
 }
 
@@ -1204,6 +1281,30 @@ private extension HTMLDiagnostics {
 
     var runtimeCompatibilityRiskCount: Int {
         runtimeRiskCount ?? 0
+    }
+
+    var pptxNativeObjectCount: Int {
+        (pptxTextObjectCount ?? 0) + (pptxImageObjectCount ?? 0) + (pptxShapeObjectCount ?? 0)
+    }
+
+    var pptxMappingTotalObjectCount: Int {
+        pptxNativeObjectCount + (pptxReviewObjectCount ?? 0) + (pptxFallbackObjectCount ?? 0)
+    }
+
+    var pptxEditableEstimate: Int {
+        let total = pptxMappingTotalObjectCount
+        guard total > 0 else { return 100 }
+        return boundedScore(Int((Double(pptxNativeObjectCount) / Double(total) * 100).rounded()))
+    }
+
+    var pptxMappingRecommendation: String {
+        if (pptxFallbackObjectCount ?? 0) > 0 {
+            return "存在只能整体保留或高风险对象。若目标是可编辑 PPTX，建议先转为可编辑版；若目标是视觉完全一致，优先导出 PDF。"
+        }
+        if (pptxReviewObjectCount ?? 0) > 0 {
+            return "大部分对象可编辑导出，但表格、矢量、复杂效果或层叠对象需要导出后重点复核。"
+        }
+        return "主要由文字、图片和简单形状组成，适合导出可编辑 PPTX，仍建议抽查文本框和图片。"
     }
 
     var runtimeCompatibilityDetail: String {

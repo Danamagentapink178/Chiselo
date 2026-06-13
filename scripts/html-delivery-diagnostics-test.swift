@@ -94,6 +94,10 @@ final class HTMLDeliveryDiagnosticsTest: NSObject, WKNavigationDelegate, WKScrip
             (bridgeInt(diagnostics["outOfBoundsCount"]) ?? 0) >= 1 &&
             (bridgeInt(diagnostics["overlapCount"]) ?? 0) >= 1 &&
             (bridgeInt(diagnostics["pptxEffectRiskCount"]) ?? 0) >= 1 &&
+            (bridgeInt(diagnostics["pptxTextObjectCount"]) ?? 0) >= 1 &&
+            (bridgeInt(diagnostics["pptxImageObjectCount"]) ?? 0) >= 1 &&
+            (bridgeInt(diagnostics["pptxReviewObjectCount"]) ?? 0) >= 1 &&
+            bridgeInt(diagnostics["pptxFallbackObjectCount"]) == 0 &&
             issueKinds.isSuperset(of: ["broken-image", "text-overflow", "out-of-bounds", "overlap", "pptx-effect-risk"]) &&
             hasElementTarget
     }

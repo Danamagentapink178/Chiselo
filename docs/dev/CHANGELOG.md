@@ -12,6 +12,7 @@ All notable changes to Chiselo will be documented here.
 - Preserved shadow and image object-fit through direct HTML editing, editable-version capture, exported HTML, and deck schema validation.
 - Added PPTX effect-risk preflight diagnostics for complex CSS visuals such as background images, radial/repeating gradients, filters, masks, clipping paths, blend modes, and 3D transforms.
 - Added object-level visual diff v1 in delivery preflight so changed text, image, geometry, and key style edits can be reviewed against the original opened HTML.
+- Added PPTX editable-object report v1 in delivery preflight, estimating editable text, image, shape, review, and whole-object fallback counts before export.
 - Added editability metadata for captured objects so the Inspector can distinguish directly editable text, replaceable images, adjustable shapes, approximated pseudo-elements, and whole-object iframe/canvas fallbacks.
 - Reused the same page/slide boundary selectors across editable capture and export so `.slide`, `.page`, `[data-page]`, and similar document frames map more consistently.
 - Added dynamic-content diagnostics for script-rendered HTML, including runtime roots, scripts, embedded pages, canvas regions, shadow components, external runtime resources, and transparent selection blockers.
