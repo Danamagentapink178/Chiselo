@@ -1461,7 +1461,7 @@ final class EditorModel: ObservableObject {
         }
 
         isCapturingHTMLVisualSnapshot = true
-        let source = "JSON.stringify(window.ChiseloEditor?.getVisualReviewSnapshotRect?.() ?? null);"
+        let source = "JSON.stringify(window.ChiseloEditor?.prepareVisualReviewSnapshot?.() ?? null);"
         webView.evaluateJavaScript(source) { [weak self, weak webView] result, error in
             Task { @MainActor in
                 guard let self else { return }
@@ -1481,23 +1481,27 @@ final class EditorModel: ObservableObject {
                 guard let json = result as? String,
                       json != "null",
                       let data = json.data(using: .utf8),
-                      let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                      let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let rectObject = object["rect"] as? [String: Any] else {
                     self.isCapturingHTMLVisualSnapshot = false
                     completion(nil)
                     return
                 }
+                let restoreState = object["state"]
 
                 let webBounds = webView.bounds
                 let rect = NSRect(
-                    x: max(0, self.bridgeCGFloat(object["x"]) ?? 0),
-                    y: max(0, self.bridgeCGFloat(object["y"]) ?? 0),
-                    width: max(1, self.bridgeCGFloat(object["width"]) ?? webBounds.width),
-                    height: max(1, self.bridgeCGFloat(object["height"]) ?? webBounds.height)
+                    x: max(0, self.bridgeCGFloat(rectObject["x"]) ?? 0),
+                    y: max(0, self.bridgeCGFloat(rectObject["y"]) ?? 0),
+                    width: max(1, self.bridgeCGFloat(rectObject["width"]) ?? webBounds.width),
+                    height: max(1, self.bridgeCGFloat(rectObject["height"]) ?? webBounds.height)
                 ).intersection(webBounds)
 
                 guard rect.width > 1, rect.height > 1 else {
-                    self.isCapturingHTMLVisualSnapshot = false
-                    completion(nil)
+                    self.restoreHTMLVisualSnapshotState(restoreState, in: webView) {
+                        self.isCapturingHTMLVisualSnapshot = false
+                        completion(nil)
+                    }
                     return
                 }
 
@@ -1506,15 +1510,39 @@ final class EditorModel: ObservableObject {
                 webView.takeSnapshot(with: config) { [weak self] image, error in
                     Task { @MainActor in
                         guard let self else { return }
-                        self.isCapturingHTMLVisualSnapshot = false
                         if let error {
-                            self.status = "截图复核捕获失败：\(error.localizedDescription)"
-                            completion(nil)
+                            self.restoreHTMLVisualSnapshotState(restoreState, in: webView) {
+                                self.isCapturingHTMLVisualSnapshot = false
+                                self.status = "截图复核捕获失败：\(error.localizedDescription)"
+                                completion(nil)
+                            }
                             return
                         }
-                        completion(image)
+                        self.restoreHTMLVisualSnapshotState(restoreState, in: webView) {
+                            self.isCapturingHTMLVisualSnapshot = false
+                            completion(image)
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private func restoreHTMLVisualSnapshotState(_ state: Any?, in webView: WKWebView, completion: @escaping () -> Void) {
+        guard let state,
+              JSONSerialization.isValidJSONObject(state),
+              let data = try? JSONSerialization.data(withJSONObject: state, options: []),
+              let json = String(data: data, encoding: .utf8) else {
+            completion()
+            return
+        }
+
+        webView.evaluateJavaScript("window.ChiseloEditor?.restoreVisualReviewSnapshot?.(\(json));") { [weak self] _, error in
+            Task { @MainActor in
+                if let error {
+                    self?.status = "截图视角恢复失败：\(error.localizedDescription)"
+                }
+                completion()
             }
         }
     }

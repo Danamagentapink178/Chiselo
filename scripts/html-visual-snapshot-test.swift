@@ -111,7 +111,7 @@ final class HTMLVisualSnapshotTest: NSObject, WKNavigationDelegate, WKScriptMess
             fail("WebView missing")
         }
 
-        let script = "JSON.stringify(window.ChiseloEditor?.getVisualReviewSnapshotRect?.() ?? null);"
+        let script = "JSON.stringify(window.ChiseloEditor?.prepareVisualReviewSnapshot?.() ?? null);"
         webView.evaluateJavaScript(script) { [weak self, weak webView] result, error in
             guard let self, let webView else { return }
             if let error {
@@ -121,15 +121,17 @@ final class HTMLVisualSnapshotTest: NSObject, WKNavigationDelegate, WKScriptMess
             guard let json = result as? String,
                   json != "null",
                   let data = json.data(using: .utf8),
-                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let rectObject = object["rect"] as? [String: Any] else {
                 self.fail("Snapshot rect was not valid JSON")
             }
+            let restoreState = object["state"]
 
             let rect = NSRect(
-                x: max(0, self.bridgeCGFloat(object["x"]) ?? 0),
-                y: max(0, self.bridgeCGFloat(object["y"]) ?? 0),
-                width: max(1, self.bridgeCGFloat(object["width"]) ?? webView.bounds.width),
-                height: max(1, self.bridgeCGFloat(object["height"]) ?? webView.bounds.height)
+                x: max(0, self.bridgeCGFloat(rectObject["x"]) ?? 0),
+                y: max(0, self.bridgeCGFloat(rectObject["y"]) ?? 0),
+                width: max(1, self.bridgeCGFloat(rectObject["width"]) ?? webView.bounds.width),
+                height: max(1, self.bridgeCGFloat(rectObject["height"]) ?? webView.bounds.height)
             ).intersection(webView.bounds)
 
             guard rect.width > 100, rect.height > 100 else {
@@ -150,8 +152,27 @@ final class HTMLVisualSnapshotTest: NSObject, WKNavigationDelegate, WKScriptMess
                     self.fail("Snapshot PNG was empty")
                 }
 
-                completion(image, rect, pngData.count)
+                self.restoreSnapshotState(restoreState, in: webView) {
+                    completion(image, rect, pngData.count)
+                }
             }
+        }
+    }
+
+    private func restoreSnapshotState(_ state: Any?, in webView: WKWebView, completion: @escaping () -> Void) {
+        guard let state,
+              JSONSerialization.isValidJSONObject(state),
+              let data = try? JSONSerialization.data(withJSONObject: state, options: []),
+              let json = String(data: data, encoding: .utf8) else {
+            completion()
+            return
+        }
+
+        webView.evaluateJavaScript("window.ChiseloEditor?.restoreVisualReviewSnapshot?.(\(json));") { [weak self] _, error in
+            if let error {
+                self?.fail("Could not restore snapshot state: \(error.localizedDescription)")
+            }
+            completion()
         }
     }
 

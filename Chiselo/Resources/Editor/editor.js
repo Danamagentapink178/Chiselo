@@ -6571,6 +6571,38 @@ ${htmlSlides}
     };
   }
 
+  function prepareVisualReviewSnapshot() {
+    const state = {
+      userZoom,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop
+    };
+    const canvas = editorMode === "html" ? directCanvas() : deck.canvas;
+    const bounds = viewport.getBoundingClientRect();
+    const fitX = Math.max(0.1, (bounds.width - 68) / canvas.width);
+    const nextScale = clampNumber(Math.min(fitX, 1.35), 0.05, 8);
+    userZoom = nextScale / Math.max(fitScale, 0.001);
+    fitStage();
+    viewport.scrollTo({ left: 0, top: 0, behavior: "instant" });
+    updateSelectionBox();
+    return {
+      state,
+      rect: getVisualReviewSnapshotRect()
+    };
+  }
+
+  function restoreVisualReviewSnapshot(state) {
+    if (!state || typeof state !== "object") return;
+    userZoom = clampNumber(Number(state.userZoom || 1), MIN_USER_ZOOM, MAX_USER_ZOOM);
+    fitStage();
+    viewport.scrollTo({
+      left: Number(state.scrollLeft || 0),
+      top: Number(state.scrollTop || 0),
+      behavior: "instant"
+    });
+    updateSelectionBox();
+  }
+
   function isEditingText() {
     const active = document.activeElement;
     if (active?.isContentEditable || active?.matches?.("input, textarea")) return true;
@@ -6597,6 +6629,8 @@ ${htmlSlides}
       h: frame.rect.h
     })),
     getVisualReviewSnapshotRect,
+    prepareVisualReviewSnapshot,
+    restoreVisualReviewSnapshot,
     getViewportState: () => ({
       scale,
       fitScale,
