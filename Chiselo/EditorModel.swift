@@ -15,6 +15,13 @@ private enum OpenTabReadResult: Sendable {
     case failure(filename: String, message: String)
 }
 
+private struct OpenTabSafetyInfo: Equatable {
+    var backupURL: URL?
+    var backupCreated: Bool
+    var warning: String?
+    var editWarningShown: Bool = false
+}
+
 struct HTMLVisualSnapshotPair: Equatable {
     var baseline: NSImage?
     var current: NSImage?
@@ -138,6 +145,7 @@ final class EditorModel: ObservableObject {
     private let editorBackdropDefaultsKey = "Chiselo.EditorBackdrop"
     private var htmlVisualBaselineImage: NSImage?
     private var pendingHTMLVisualBaselineCapture = false
+    private var tabSafetyInfo: [UUID: OpenTabSafetyInfo] = [:]
 
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
@@ -686,6 +694,7 @@ final class EditorModel: ObservableObject {
 
             case "documentDirty":
                 markActiveTabNeedsSnapshot()
+                presentBackupReminderBeforeFirstEditIfNeeded()
 
             case "requestReplaceImage":
                 replaceSelectedImage()
@@ -874,6 +883,7 @@ final class EditorModel: ObservableObject {
     func closeTab(_ id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         let wasActive = activeTabID == id
+        tabSafetyInfo.removeValue(forKey: id)
         tabs.remove(at: index)
 
         guard wasActive else { return }
@@ -956,6 +966,43 @@ final class EditorModel: ObservableObject {
     func setFileDropTargeted(_ targeted: Bool) {
         guard isFileDropTargeted != targeted else { return }
         isFileDropTargeted = targeted
+    }
+
+    private func presentBackupReminderBeforeFirstEditIfNeeded() {
+        guard let activeTabID,
+              var safety = tabSafetyInfo[activeTabID],
+              !safety.editWarningShown else {
+            return
+        }
+
+        safety.editWarningShown = true
+        tabSafetyInfo[activeTabID] = safety
+
+        let alert = NSAlert()
+        alert.messageText = "修改前请确认原始文件已备份"
+        if let warning = safety.warning {
+            alert.informativeText = "\(warning)\n\n建议先在 Finder 里复制一份原始 HTML，再继续精修。"
+            alert.alertStyle = .warning
+        } else if let backupURL = safety.backupURL {
+            let verb = safety.backupCreated ? "已自动创建原始备份" : "已保留已有原始备份"
+            alert.informativeText = "\(verb)：\(backupURL.lastPathComponent)\n\n保存覆盖前还会写入 `.chiselo-history` 版本快照。重要交付文件建议先确认这份备份存在。"
+            alert.alertStyle = .informational
+        } else {
+            alert.informativeText = "当前文件还没有可确认的自动备份。重要 HTML 建议先复制一份原始文件，再继续修改。"
+            alert.alertStyle = .warning
+        }
+        alert.addButton(withTitle: "继续修改")
+        alert.addButton(withTitle: "打开备份位置")
+
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn, let backupURL = safety.backupURL {
+            NSWorkspace.shared.activateFileViewerSelecting([backupURL])
+            status = "已显示原始备份：\(backupURL.lastPathComponent)"
+        } else if let backupURL = safety.backupURL {
+            status = "修改前备份已确认：\(backupURL.lastPathComponent)"
+        } else {
+            status = "请确认已自行备份原始文件"
+        }
     }
 
     func saveDeck() {
@@ -2017,6 +2064,7 @@ final class EditorModel: ObservableObject {
     private func resetToWelcome() {
         activeTabID = nil
         openedURL = nil
+        tabSafetyInfo.removeAll()
         deck = nil
         selectedElement = nil
         selectedSlideIndex = 0
@@ -2059,6 +2107,7 @@ final class EditorModel: ObservableObject {
         var lastID: UUID?
         var lastFailure: String?
         var lastSafetyWarning: String?
+        var lastBackupURL: URL?
         var openedCount = 0
         var reusedCount = 0
 
@@ -2071,17 +2120,24 @@ final class EditorModel: ObservableObject {
                     continue
                 }
 
+                var safety = OpenTabSafetyInfo(backupURL: nil, backupCreated: false, warning: nil)
                 do {
-                    try safeFileHistory.backupOriginalIfNeeded(
+                    let backup = try safeFileHistory.backupOriginalIfNeeded(
                         at: payload.url,
                         fallbackExtension: payload.mode == "html" ? "html" : "aislide"
                     )
+                    safety.backupURL = backup?.url
+                    safety.backupCreated = backup?.created == true
+                    lastBackupURL = backup?.url
                 } catch {
-                    lastSafetyWarning = "安全备份失败：\(payload.url.lastPathComponent) \(error.localizedDescription)"
+                    let message = "安全备份失败：\(payload.url.lastPathComponent) \(error.localizedDescription)"
+                    safety.warning = message
+                    lastSafetyWarning = message
                 }
 
                 let id = UUID()
                 tabs.append(EditorTab(id: id, title: payload.title, url: payload.url, mode: payload.mode, content: payload.content, needsSnapshot: false))
+                tabSafetyInfo[id] = safety
                 lastID = id
                 openedCount += 1
 
@@ -2105,6 +2161,8 @@ final class EditorModel: ObservableObject {
 
             if let lastSafetyWarning {
                 status += " · \(lastSafetyWarning)"
+            } else if openedCount > 0, let lastBackupURL {
+                status += " · 已准备原始备份 \(lastBackupURL.lastPathComponent)"
             }
         } else {
             status = lastFailure ?? "没有可打开的文件"

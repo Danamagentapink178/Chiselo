@@ -1,6 +1,11 @@
 import Foundation
 
 final class SafeFileHistory {
+    struct OriginalBackup: Equatable {
+        var url: URL
+        var created: Bool
+    }
+
     struct VersionSnapshot: Identifiable, Equatable {
         var url: URL
         var createdAt: Date?
@@ -30,16 +35,21 @@ final class SafeFileHistory {
         return try createVersionSnapshot(at: url, fallbackExtension: fallbackExtension)
     }
 
-    func backupOriginalIfNeeded(at url: URL, fallbackExtension: String) throws {
+    @discardableResult
+    func backupOriginalIfNeeded(at url: URL, fallbackExtension: String) throws -> OriginalBackup? {
         let key = normalizedFilePath(for: url) ?? url.path
-        guard fileManager.fileExists(atPath: url.path), !backedUpOriginalPaths.contains(key) else { return }
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
 
         let backupURL = backupURL(for: url, fallbackExtension: fallbackExtension)
-        if !fileManager.fileExists(atPath: backupURL.path) {
+        var created = false
+
+        if !backedUpOriginalPaths.contains(key), !fileManager.fileExists(atPath: backupURL.path) {
             try fileManager.copyItem(at: url, to: backupURL)
+            created = true
         }
 
         backedUpOriginalPaths.insert(key)
+        return OriginalBackup(url: backupURL, created: created)
     }
 
     func createVersionSnapshot(at url: URL, fallbackExtension: String) throws -> URL {

@@ -23,12 +23,16 @@ struct SafeFileHistoryTest {
         let htmlURL = root.appendingPathComponent("landing.html")
         try "original html".write(to: htmlURL, atomically: true, encoding: .utf8)
 
-        try history.backupOriginalIfNeeded(at: htmlURL, fallbackExtension: "html")
+        let firstBackup = try history.backupOriginalIfNeeded(at: htmlURL, fallbackExtension: "html")
         let backupURL = root.appendingPathComponent("landing.chiselo-backup.html")
+        try expect(firstBackup?.created == true, "Expected first backup call to report a newly created backup.")
+        try expect(canonicalPath(firstBackup?.url) == canonicalPath(backupURL), "Expected backup call to return the sibling backup URL.")
         try expect(FileManager.default.fileExists(atPath: backupURL.path), "Expected sibling backup to be created.")
 
         try "edited html".write(to: htmlURL, atomically: true, encoding: .utf8)
-        try history.backupOriginalIfNeeded(at: htmlURL, fallbackExtension: "html")
+        let secondBackup = try history.backupOriginalIfNeeded(at: htmlURL, fallbackExtension: "html")
+        try expect(secondBackup?.created == false, "Expected existing backup call to report no new backup.")
+        try expect(canonicalPath(secondBackup?.url) == canonicalPath(backupURL), "Expected existing backup call to keep returning the backup URL.")
         let backupContent = try String(contentsOf: backupURL, encoding: .utf8)
         try expect(backupContent == "original html", "Existing sibling backup should not be overwritten.")
 

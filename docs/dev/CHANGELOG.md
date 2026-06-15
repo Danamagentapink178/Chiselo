@@ -2,6 +2,14 @@
 
 All notable changes to Chiselo will be documented here.
 
+## 0.1.11 - 2026-06-15
+
+- Added a first-edit backup reminder for real local HTML and Chiselo project files so users confirm the original file backup before continuing precision edits.
+- Surfaced the `.chiselo-backup` filename after opening a real file and kept save-time `.chiselo-history` snapshots in place.
+- Kept direct-selection quick actions compact by default, with action buttons tucked behind an on-demand menu so selected text stays visible.
+- Added compact quick-action regression coverage to release preflight.
+- Bumped the packaging version to `0.1.11` for the next preview build.
+
 ## 0.1.10 - 2026-06-13
 
 - Added target lists for object-level visual changes so changed text, images, geometry, and style objects can be reviewed beyond the first changed object.

@@ -20,6 +20,7 @@ Chiselo documentation is split into user docs, developer docs, and release notes
 
 ## Release Notes
 
+- [0.1.11 Preview](releases/RELEASE_NOTES_0.1.11_PREVIEW.md)
 - [0.1.10 Preview](releases/RELEASE_NOTES_0.1.10_PREVIEW.md)
 - [0.1.9 Preview](releases/RELEASE_NOTES_0.1.9_PREVIEW.md)
 - [0.1.8 Preview](releases/RELEASE_NOTES_0.1.8_PREVIEW.md)
